@@ -1,0 +1,154 @@
+{
+  "_version": "1.59.0",
+  "sap.app": {
+    "id": "zpwc.gts.spladjudication",
+    "type": "application",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": {
+      "version": "0.0.1"
+    },
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "resources": "resources.json",
+    "sourceTemplate": {
+      "id": "@sap/generator-fiori:lrop",
+      "version": "1.14.0",
+      "toolsId": "c6a9e0e0-0001-0001-0001-000000000001"
+    },
+    "dataSources": {
+      "mainService": {
+        "uri": "/sap/opu/odata4/sap/zspl_adjudication/srvd_a2x/zpwc/gts/spl_adjudication/0001/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "localUri": "localService/metadata.xml",
+          "odataVersion": "4.0"
+        }
+      }
+    },
+    "crossNavigation": {
+      "inbounds": {
+        "SPLAdjudication-display": {
+          "semanticObject": "SPLAdjudication",
+          "action": "display",
+          "title": "{{flpTitle}}",
+          "subtitle": "{{flpSubtitle}}",
+          "signature": {
+            "parameters": {},
+            "additionalParameters": "allowed"
+          }
+        }
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "icons": {
+      "icon": "",
+      "favIcon": "",
+      "phone": "",
+      "phone@2": "",
+      "tablet": "",
+      "tablet@2": ""
+    },
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": true
+    }
+  },
+  "sap.ui5": {
+    "flexEnabled": true,
+    "dependencies": {
+      "minUI5Version": "1.120.0",
+      "libs": {
+        "sap.m": {},
+        "sap.ui.core": {},
+        "sap.ushell": {},
+        "sap.fe.templates": {}
+      }
+    },
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "settings": {
+          "bundleName": "zpwc.gts.spladjudication.i18n.i18n"
+        }
+      },
+      "": {
+        "dataSource": "mainService",
+        "preload": true,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
+      }
+    },
+    "routing": {
+      "routes": [
+        {
+          "pattern": ":?query:",
+          "name": "AdjudicationCaseList",
+          "target": "AdjudicationCaseList"
+        },
+        {
+          "pattern": "AdjudicationCase({key}):?query:",
+          "name": "AdjudicationCaseObjectPage",
+          "target": "AdjudicationCaseObjectPage"
+        }
+      ],
+      "targets": {
+        "AdjudicationCaseList": {
+          "type": "Component",
+          "id": "AdjudicationCaseList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "entitySet": "AdjudicationCase",
+              "variantManagement": "Page",
+              "initialLoad": "Enabled",
+              "navigation": {
+                "AdjudicationCase": {
+                  "detail": {
+                    "route": "AdjudicationCaseObjectPage"
+                  }
+                }
+              },
+              "views": {
+                "paths": [
+                  {"key": "all", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant"},
+                  {"key": "escalated", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#Escalated"},
+                  {"key": "readyToClear", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#ReadyToClear"},
+                  {"key": "highValue", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#HighValue"},
+                  {"key": "aged", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#Aged"}
+                ]
+              }
+            }
+          }
+        },
+        "AdjudicationCaseObjectPage": {
+          "type": "Component",
+          "id": "AdjudicationCaseObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "entitySet": "AdjudicationCase",
+              "editableHeaderContent": false,
+              "navigation": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "sap.fe": {},
+  "sap.fiori": {
+    "registrationIds": [],
+    "archeType": "transactional"
+  }
+}

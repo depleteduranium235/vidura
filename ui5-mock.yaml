@@ -1,0 +1,27 @@
+specVersion: "4.0"
+metadata:
+  name: zpwc.gts.spl-adjudication
+type: application
+framework:
+  name: SAPUI5
+  version: "1.120.0"
+  libraries:
+    - name: sap.m
+    - name: sap.ui.core
+    - name: sap.ushell
+    - name: sap.fe.templates
+    - name: themelib_sap_horizon
+server:
+  customMiddleware:
+    - name: sap-fe-mockserver
+      mountPath: /
+      afterMiddleware: compression
+      configuration:
+        services:
+          - urlPath: /sap/opu/odata4/sap/zspl_adjudication/srvd_a2x/zpwc/gts/spl_adjudication/0001
+            metadataPath: ./webapp/localService/metadata.xml
+            mockdataPath: ./webapp/localService/mockdata
+            generateMockData: true
+        annotations:
+          - localPath: ./webapp/annotations/annotation.xml
+            urlPath: /sap/opu/odata4/sap/zspl_adjudication/srvd_a2x/zpwc/gts/spl_adjudication/0001/annotation.xml

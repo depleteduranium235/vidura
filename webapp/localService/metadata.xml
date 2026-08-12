@@ -1,0 +1,606 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:DataServices>
+    <Schema Namespace="zpwc.gts.spl_adjudication" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+
+      <EntityType Name="AdjudicationCaseType">
+        <Key>
+          <PropertyRef Name="CaseUUID"/>
+        </Key>
+        <Property Name="CaseUUID" Type="Edm.Guid" Nullable="false"/>
+        <Property Name="CaseID" Type="Edm.String" MaxLength="20" Nullable="false"/>
+        <Property Name="BusinessPartnerID" Type="Edm.String" MaxLength="10"/>
+        <Property Name="BusinessPartnerName" Type="Edm.String" MaxLength="120"/>
+        <Property Name="BPCountry" Type="Edm.String" MaxLength="3"/>
+        <Property Name="BPCity" Type="Edm.String" MaxLength="40"/>
+        <Property Name="BPEntityType" Type="Edm.String" MaxLength="20"/>
+        <Property Name="BPRegistrationNo" Type="Edm.String" MaxLength="40"/>
+        <Property Name="SPLEntryID" Type="Edm.String" MaxLength="30"/>
+        <Property Name="SPLEntryName" Type="Edm.String" MaxLength="200"/>
+        <Property Name="SPLListType" Type="Edm.String" MaxLength="40"/>
+        <Property Name="SPLProgramme" Type="Edm.String" MaxLength="60"/>
+        <Property Name="SPLEntityType" Type="Edm.String" MaxLength="20"/>
+        <Property Name="MatchPercentage" Type="Edm.Decimal" Scale="1" Precision="5"/>
+        <Property Name="MatchBasis" Type="Edm.String" MaxLength="200"/>
+        <Property Name="ComparisonRule" Type="Edm.String" MaxLength="40"/>
+        <Property Name="IntakePath" Type="Edm.String" MaxLength="20"/>
+        <Property Name="DispositionBand" Type="Edm.String" MaxLength="20"/>
+        <Property Name="DispositionBandCriticality" Type="Edm.Int32"/>
+        <Property Name="Status" Type="Edm.String" MaxLength="20"/>
+        <Property Name="StatusCriticality" Type="Edm.Int32"/>
+        <Property Name="Priority" Type="Edm.String" MaxLength="10"/>
+        <Property Name="PriorityCriticality" Type="Edm.Int32"/>
+        <Property Name="AssignedTo" Type="Edm.String" MaxLength="80"/>
+        <Property Name="AgentRationale" Type="Edm.String" MaxLength="2000"/>
+        <Property Name="WhatWouldChangeMyMind" Type="Edm.String" MaxLength="500"/>
+        <Property Name="EvidenceSummary" Type="Edm.String" MaxLength="500"/>
+        <Property Name="PrecedentExists" Type="Edm.Boolean"/>
+        <Property Name="PrecedentCaseID" Type="Edm.String" MaxLength="20"/>
+        <Property Name="DocumentType" Type="Edm.String" MaxLength="20"/>
+        <Property Name="DocumentNumber" Type="Edm.String" MaxLength="20"/>
+        <Property Name="OrderValue" Type="Edm.Decimal" Scale="2" Precision="15"/>
+        <Property Name="OrderCurrency" Type="Edm.String" MaxLength="3"/>
+        <Property Name="ShipToCountry" Type="Edm.String" MaxLength="3"/>
+        <Property Name="EndUseCode" Type="Edm.String" MaxLength="20"/>
+        <Property Name="ModelVersion" Type="Edm.String" MaxLength="40"/>
+        <Property Name="PromptVersion" Type="Edm.String" MaxLength="40"/>
+        <Property Name="BandLogicVersion" Type="Edm.String" MaxLength="20"/>
+        <Property Name="TaxonomyVersion" Type="Edm.String" MaxLength="20"/>
+        <Property Name="ProcessingTimestamp" Type="Edm.DateTimeOffset" Precision="7"/>
+        <Property Name="ElapsedMilliseconds" Type="Edm.Int32"/>
+        <Property Name="HumanDecision" Type="Edm.String" MaxLength="20"/>
+        <Property Name="HumanUser" Type="Edm.String" MaxLength="80"/>
+        <Property Name="HumanComment" Type="Edm.String" MaxLength="2000"/>
+        <Property Name="DecisionTimestamp" Type="Edm.DateTimeOffset" Precision="7"/>
+        <Property Name="CreatedAt" Type="Edm.DateTimeOffset" Precision="7"/>
+        <Property Name="ChangedAt" Type="Edm.DateTimeOffset" Precision="7"/>
+        <Property Name="AgedDays" Type="Edm.Int32"/>
+        <NavigationProperty Name="_EvidenceItems" Type="Collection(zpwc.gts.spl_adjudication.EvidenceItemType)"/>
+      </EntityType>
+
+      <EntityType Name="EvidenceItemType">
+        <Key>
+          <PropertyRef Name="EvidenceUUID"/>
+        </Key>
+        <Property Name="EvidenceUUID" Type="Edm.Guid" Nullable="false"/>
+        <Property Name="CaseUUID" Type="Edm.Guid" Nullable="false"/>
+        <Property Name="Category" Type="Edm.String" MaxLength="30"/>
+        <Property Name="CategoryCriticality" Type="Edm.Int32"/>
+        <Property Name="DataElement" Type="Edm.String" MaxLength="60"/>
+        <Property Name="BPValue" Type="Edm.String" MaxLength="500"/>
+        <Property Name="SPLValue" Type="Edm.String" MaxLength="500"/>
+        <Property Name="Assessment" Type="Edm.String" MaxLength="500"/>
+        <Property Name="DataAvailable" Type="Edm.Boolean"/>
+        <Property Name="SortOrder" Type="Edm.Int32"/>
+        <NavigationProperty Name="_Case" Type="zpwc.gts.spl_adjudication.AdjudicationCaseType" Partner="_EvidenceItems"/>
+      </EntityType>
+
+      <EntityContainer Name="EntityContainer">
+        <EntitySet Name="AdjudicationCase" EntityType="zpwc.gts.spl_adjudication.AdjudicationCaseType">
+          <NavigationPropertyBinding Path="_EvidenceItems" Target="EvidenceItem"/>
+        </EntitySet>
+        <EntitySet Name="EvidenceItem" EntityType="zpwc.gts.spl_adjudication.EvidenceItemType">
+          <NavigationPropertyBinding Path="_Case" Target="AdjudicationCase"/>
+        </EntitySet>
+      </EntityContainer>
+
+      <!-- List Report annotations -->
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType">
+
+        <Annotation Term="com.sap.vocabularies.UI.v1.HeaderInfo">
+          <Record Type="com.sap.vocabularies.UI.v1.HeaderInfoType">
+            <PropertyValue Property="TypeName" String="Adjudication Case"/>
+            <PropertyValue Property="TypeNamePlural" String="Adjudication Cases"/>
+            <PropertyValue Property="Title">
+              <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                <PropertyValue Property="Value" Path="CaseID"/>
+              </Record>
+            </PropertyValue>
+            <PropertyValue Property="Description">
+              <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                <PropertyValue Property="Value" Path="BusinessPartnerName"/>
+              </Record>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <Annotation Term="com.sap.vocabularies.UI.v1.SelectionFields">
+          <Collection>
+            <PropertyPath>DispositionBand</PropertyPath>
+            <PropertyPath>Status</PropertyPath>
+            <PropertyPath>Priority</PropertyPath>
+            <PropertyPath>IntakePath</PropertyPath>
+            <PropertyPath>AssignedTo</PropertyPath>
+            <PropertyPath>SPLListType</PropertyPath>
+            <PropertyPath>BPCountry</PropertyPath>
+            <PropertyPath>AgedDays</PropertyPath>
+          </Collection>
+        </Annotation>
+
+        <Annotation Term="com.sap.vocabularies.UI.v1.LineItem">
+          <Collection>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="CaseID"/>
+              <PropertyValue Property="Label" String="Case"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="BusinessPartnerName"/>
+              <PropertyValue Property="Label" String="Business Partner"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="SPLEntryName"/>
+              <PropertyValue Property="Label" String="SPL Entry"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="DispositionBand"/>
+              <PropertyValue Property="Label" String="Disposition"/>
+              <PropertyValue Property="Criticality" Path="DispositionBandCriticality"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="Status"/>
+              <PropertyValue Property="Label" String="Status"/>
+              <PropertyValue Property="Criticality" Path="StatusCriticality"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="Priority"/>
+              <PropertyValue Property="Label" String="Priority"/>
+              <PropertyValue Property="Criticality" Path="PriorityCriticality"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="MatchBasis"/>
+              <PropertyValue Property="Label" String="Match Basis"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="IntakePath"/>
+              <PropertyValue Property="Label" String="Path"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="SPLListType"/>
+              <PropertyValue Property="Label" String="List"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="AgedDays"/>
+              <PropertyValue Property="Label" String="Age (days)"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="AssignedTo"/>
+              <PropertyValue Property="Label" String="Assigned To"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="BPCountry"/>
+              <PropertyValue Property="Label" String="Country"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="OrderValue"/>
+              <PropertyValue Property="Label" String="Value at Risk"/>
+            </Record>
+          </Collection>
+        </Annotation>
+
+        <!-- Default sort: Escalate first, then by priority, then oldest first -->
+        <Annotation Term="com.sap.vocabularies.UI.v1.PresentationVariant">
+          <Record Type="com.sap.vocabularies.UI.v1.PresentationVariantType">
+            <PropertyValue Property="SortOrder">
+              <Collection>
+                <Record Type="com.sap.vocabularies.Common.v1.SortOrderType">
+                  <PropertyValue Property="Property" PropertyPath="DispositionBand"/>
+                  <PropertyValue Property="Descending" Bool="false"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.Common.v1.SortOrderType">
+                  <PropertyValue Property="Property" PropertyPath="Priority"/>
+                  <PropertyValue Property="Descending" Bool="false"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.Common.v1.SortOrderType">
+                  <PropertyValue Property="Property" PropertyPath="AgedDays"/>
+                  <PropertyValue Property="Descending" Bool="true"/>
+                </Record>
+              </Collection>
+            </PropertyValue>
+            <PropertyValue Property="Visualizations">
+              <Collection>
+                <AnnotationPath>@com.sap.vocabularies.UI.v1.LineItem</AnnotationPath>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <!-- Selection Variant: Escalated -->
+        <Annotation Term="com.sap.vocabularies.UI.v1.SelectionVariant" Qualifier="Escalated">
+          <Record Type="com.sap.vocabularies.UI.v1.SelectionVariantType">
+            <PropertyValue Property="Text" String="Escalated"/>
+            <PropertyValue Property="SelectOptions">
+              <Collection>
+                <Record Type="com.sap.vocabularies.UI.v1.SelectOptionType">
+                  <PropertyValue Property="PropertyName" PropertyPath="DispositionBand"/>
+                  <PropertyValue Property="Ranges">
+                    <Collection>
+                      <Record Type="com.sap.vocabularies.UI.v1.SelectionRangeType">
+                        <PropertyValue Property="Sign" EnumMember="com.sap.vocabularies.UI.v1.SelectionRangeSignType/I"/>
+                        <PropertyValue Property="Option" EnumMember="com.sap.vocabularies.UI.v1.SelectionRangeOptionType/EQ"/>
+                        <PropertyValue Property="Low" String="Escalate"/>
+                      </Record>
+                    </Collection>
+                  </PropertyValue>
+                </Record>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <!-- Selection Variant: Ready to Clear -->
+        <Annotation Term="com.sap.vocabularies.UI.v1.SelectionVariant" Qualifier="ReadyToClear">
+          <Record Type="com.sap.vocabularies.UI.v1.SelectionVariantType">
+            <PropertyValue Property="Text" String="Ready to Clear"/>
+            <PropertyValue Property="SelectOptions">
+              <Collection>
+                <Record Type="com.sap.vocabularies.UI.v1.SelectOptionType">
+                  <PropertyValue Property="PropertyName" PropertyPath="DispositionBand"/>
+                  <PropertyValue Property="Ranges">
+                    <Collection>
+                      <Record Type="com.sap.vocabularies.UI.v1.SelectionRangeType">
+                        <PropertyValue Property="Sign" EnumMember="com.sap.vocabularies.UI.v1.SelectionRangeSignType/I"/>
+                        <PropertyValue Property="Option" EnumMember="com.sap.vocabularies.UI.v1.SelectionRangeOptionType/EQ"/>
+                        <PropertyValue Property="Low" String="Propose Clear"/>
+                      </Record>
+                    </Collection>
+                  </PropertyValue>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.SelectOptionType">
+                  <PropertyValue Property="PropertyName" PropertyPath="Status"/>
+                  <PropertyValue Property="Ranges">
+                    <Collection>
+                      <Record Type="com.sap.vocabularies.UI.v1.SelectionRangeType">
+                        <PropertyValue Property="Sign" EnumMember="com.sap.vocabularies.UI.v1.SelectionRangeSignType/I"/>
+                        <PropertyValue Property="Option" EnumMember="com.sap.vocabularies.UI.v1.SelectionRangeOptionType/EQ"/>
+                        <PropertyValue Property="Low" String="Agent Complete"/>
+                      </Record>
+                    </Collection>
+                  </PropertyValue>
+                </Record>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <!-- Selection Variant: High Value at Risk -->
+        <Annotation Term="com.sap.vocabularies.UI.v1.SelectionVariant" Qualifier="HighValue">
+          <Record Type="com.sap.vocabularies.UI.v1.SelectionVariantType">
+            <PropertyValue Property="Text" String="High Value at Risk"/>
+            <PropertyValue Property="SelectOptions">
+              <Collection>
+                <Record Type="com.sap.vocabularies.UI.v1.SelectOptionType">
+                  <PropertyValue Property="PropertyName" PropertyPath="OrderValue"/>
+                  <PropertyValue Property="Ranges">
+                    <Collection>
+                      <Record Type="com.sap.vocabularies.UI.v1.SelectionRangeType">
+                        <PropertyValue Property="Sign" EnumMember="com.sap.vocabularies.UI.v1.SelectionRangeSignType/I"/>
+                        <PropertyValue Property="Option" EnumMember="com.sap.vocabularies.UI.v1.SelectionRangeOptionType/GT"/>
+                        <PropertyValue Property="Low" String="0"/>
+                      </Record>
+                    </Collection>
+                  </PropertyValue>
+                </Record>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <!-- Selection Variant: Aged Over 5 Days -->
+        <Annotation Term="com.sap.vocabularies.UI.v1.SelectionVariant" Qualifier="Aged">
+          <Record Type="com.sap.vocabularies.UI.v1.SelectionVariantType">
+            <PropertyValue Property="Text" String="Aged Over 5 Days"/>
+            <PropertyValue Property="SelectOptions">
+              <Collection>
+                <Record Type="com.sap.vocabularies.UI.v1.SelectOptionType">
+                  <PropertyValue Property="PropertyName" PropertyPath="AgedDays"/>
+                  <PropertyValue Property="Ranges">
+                    <Collection>
+                      <Record Type="com.sap.vocabularies.UI.v1.SelectionRangeType">
+                        <PropertyValue Property="Sign" EnumMember="com.sap.vocabularies.UI.v1.SelectionRangeSignType/I"/>
+                        <PropertyValue Property="Option" EnumMember="com.sap.vocabularies.UI.v1.SelectionRangeOptionType/GE"/>
+                        <PropertyValue Property="Low" String="5"/>
+                      </Record>
+                    </Collection>
+                  </PropertyValue>
+                </Record>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <!-- Object Page Header Facets -->
+        <Annotation Term="com.sap.vocabularies.UI.v1.DataPoint" Qualifier="DispositionBand">
+          <Record Type="com.sap.vocabularies.UI.v1.DataPointType">
+            <PropertyValue Property="Value" Path="DispositionBand"/>
+            <PropertyValue Property="Title" String="Disposition"/>
+            <PropertyValue Property="Criticality" Path="DispositionBandCriticality"/>
+          </Record>
+        </Annotation>
+
+        <Annotation Term="com.sap.vocabularies.UI.v1.DataPoint" Qualifier="Status">
+          <Record Type="com.sap.vocabularies.UI.v1.DataPointType">
+            <PropertyValue Property="Value" Path="Status"/>
+            <PropertyValue Property="Title" String="Status"/>
+            <PropertyValue Property="Criticality" Path="StatusCriticality"/>
+          </Record>
+        </Annotation>
+
+        <Annotation Term="com.sap.vocabularies.UI.v1.DataPoint" Qualifier="Priority">
+          <Record Type="com.sap.vocabularies.UI.v1.DataPointType">
+            <PropertyValue Property="Value" Path="Priority"/>
+            <PropertyValue Property="Title" String="Priority"/>
+            <PropertyValue Property="Criticality" Path="PriorityCriticality"/>
+          </Record>
+        </Annotation>
+
+        <Annotation Term="com.sap.vocabularies.UI.v1.HeaderFacets">
+          <Collection>
+            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+              <PropertyValue Property="ID" String="DispositionBandFacet"/>
+              <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.DataPoint#DispositionBand"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+              <PropertyValue Property="ID" String="StatusFacet"/>
+              <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.DataPoint#Status"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+              <PropertyValue Property="ID" String="PriorityFacet"/>
+              <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.DataPoint#Priority"/>
+            </Record>
+          </Collection>
+        </Annotation>
+
+        <!-- Object Page Sections -->
+        <Annotation Term="com.sap.vocabularies.UI.v1.Facets">
+          <Collection>
+            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+              <PropertyValue Property="ID" String="AgentAssessment"/>
+              <PropertyValue Property="Label" String="Agent Assessment"/>
+              <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.FieldGroup#AgentAssessment"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+              <PropertyValue Property="ID" String="EvidenceLedger"/>
+              <PropertyValue Property="Label" String="Evidence Ledger"/>
+              <PropertyValue Property="Target" AnnotationPath="_EvidenceItems/@com.sap.vocabularies.UI.v1.LineItem"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+              <PropertyValue Property="ID" String="HitDetails"/>
+              <PropertyValue Property="Label" String="Hit Details"/>
+              <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.FieldGroup#HitDetails"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+              <PropertyValue Property="ID" String="BusinessPartner"/>
+              <PropertyValue Property="Label" String="Business Partner"/>
+              <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.FieldGroup#BusinessPartner"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+              <PropertyValue Property="ID" String="DocumentDetails"/>
+              <PropertyValue Property="Label" String="Document Details"/>
+              <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.FieldGroup#DocumentDetails"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+              <PropertyValue Property="ID" String="Precedent"/>
+              <PropertyValue Property="Label" String="Precedent"/>
+              <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.FieldGroup#Precedent"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+              <PropertyValue Property="ID" String="AuditTrail"/>
+              <PropertyValue Property="Label" String="Processing Audit"/>
+              <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.FieldGroup#Audit"/>
+            </Record>
+          </Collection>
+        </Annotation>
+
+        <!-- Field Groups -->
+        <Annotation Term="com.sap.vocabularies.UI.v1.FieldGroup" Qualifier="AgentAssessment">
+          <Record Type="com.sap.vocabularies.UI.v1.FieldGroupType">
+            <PropertyValue Property="Data">
+              <Collection>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="AgentRationale"/>
+                  <PropertyValue Property="Label" String="Rationale"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="WhatWouldChangeMyMind"/>
+                  <PropertyValue Property="Label" String="What Would Change This Assessment"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="EvidenceSummary"/>
+                  <PropertyValue Property="Label" String="Evidence Summary"/>
+                </Record>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <Annotation Term="com.sap.vocabularies.UI.v1.FieldGroup" Qualifier="HitDetails">
+          <Record Type="com.sap.vocabularies.UI.v1.FieldGroupType">
+            <PropertyValue Property="Data">
+              <Collection>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="SPLEntryID"/>
+                  <PropertyValue Property="Label" String="SPL Entry ID"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="SPLEntryName"/>
+                  <PropertyValue Property="Label" String="SPL Entry Name"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="SPLListType"/>
+                  <PropertyValue Property="Label" String="List Type"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="SPLProgramme"/>
+                  <PropertyValue Property="Label" String="Programme"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="MatchBasis"/>
+                  <PropertyValue Property="Label" String="Match Basis"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="MatchPercentage"/>
+                  <PropertyValue Property="Label" String="GTS Match Score"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="ComparisonRule"/>
+                  <PropertyValue Property="Label" String="Comparison Rule"/>
+                </Record>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <Annotation Term="com.sap.vocabularies.UI.v1.FieldGroup" Qualifier="BusinessPartner">
+          <Record Type="com.sap.vocabularies.UI.v1.FieldGroupType">
+            <PropertyValue Property="Data">
+              <Collection>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="BusinessPartnerID"/>
+                  <PropertyValue Property="Label" String="BP Number"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="BusinessPartnerName"/>
+                  <PropertyValue Property="Label" String="Name"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="BPEntityType"/>
+                  <PropertyValue Property="Label" String="Entity Type"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="BPRegistrationNo"/>
+                  <PropertyValue Property="Label" String="Registration Number"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="BPCountry"/>
+                  <PropertyValue Property="Label" String="Country"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="BPCity"/>
+                  <PropertyValue Property="Label" String="City"/>
+                </Record>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <Annotation Term="com.sap.vocabularies.UI.v1.FieldGroup" Qualifier="DocumentDetails">
+          <Record Type="com.sap.vocabularies.UI.v1.FieldGroupType">
+            <PropertyValue Property="Data">
+              <Collection>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="DocumentType"/>
+                  <PropertyValue Property="Label" String="Document Type"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="DocumentNumber"/>
+                  <PropertyValue Property="Label" String="Document Number"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="OrderValue"/>
+                  <PropertyValue Property="Label" String="Order Value"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="OrderCurrency"/>
+                  <PropertyValue Property="Label" String="Currency"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="ShipToCountry"/>
+                  <PropertyValue Property="Label" String="Ship-To Country"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="EndUseCode"/>
+                  <PropertyValue Property="Label" String="End Use"/>
+                </Record>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <Annotation Term="com.sap.vocabularies.UI.v1.FieldGroup" Qualifier="Precedent">
+          <Record Type="com.sap.vocabularies.UI.v1.FieldGroupType">
+            <PropertyValue Property="Data">
+              <Collection>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="PrecedentExists"/>
+                  <PropertyValue Property="Label" String="Precedent Available"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="PrecedentCaseID"/>
+                  <PropertyValue Property="Label" String="Precedent Case"/>
+                </Record>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <Annotation Term="com.sap.vocabularies.UI.v1.FieldGroup" Qualifier="Audit">
+          <Record Type="com.sap.vocabularies.UI.v1.FieldGroupType">
+            <PropertyValue Property="Data">
+              <Collection>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="ModelVersion"/>
+                  <PropertyValue Property="Label" String="Model Version"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="PromptVersion"/>
+                  <PropertyValue Property="Label" String="Prompt Version"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="BandLogicVersion"/>
+                  <PropertyValue Property="Label" String="Band Logic Version"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="TaxonomyVersion"/>
+                  <PropertyValue Property="Label" String="Taxonomy Version"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="ProcessingTimestamp"/>
+                  <PropertyValue Property="Label" String="Processed At"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="ElapsedMilliseconds"/>
+                  <PropertyValue Property="Label" String="Processing Time (ms)"/>
+                </Record>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+      </Annotations>
+
+      <!-- Evidence Ledger annotations -->
+      <Annotations Target="zpwc.gts.spl_adjudication.EvidenceItemType">
+        <Annotation Term="com.sap.vocabularies.UI.v1.LineItem">
+          <Collection>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="Category"/>
+              <PropertyValue Property="Label" String="Category"/>
+              <PropertyValue Property="Criticality" Path="CategoryCriticality"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="DataElement"/>
+              <PropertyValue Property="Label" String="Data Element"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="BPValue"/>
+              <PropertyValue Property="Label" String="Business Partner Value"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="SPLValue"/>
+              <PropertyValue Property="Label" String="SPL Entry Value"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="Assessment"/>
+              <PropertyValue Property="Label" String="Assessment"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataField">
+              <PropertyValue Property="Value" Path="DataAvailable"/>
+              <PropertyValue Property="Label" String="Data Available"/>
+            </Record>
+          </Collection>
+        </Annotation>
+      </Annotations>
+
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>

@@ -1,0 +1,239 @@
+@Metadata.layer: #CONSUMER
+@UI.chart: [{ chartType: #BAR }]  // Resist the dashboard (§6.4) — no chart on the list report
+
+annotate entity ZC_SPL_AdjCase with
+{
+
+  // ────────────────────────────────────────────────────────────────────
+  // Filter bar
+  // §6.4: "Ship pre-built variants: my queue, high value at risk,
+  //         escalated, aged over 5 days"
+  // Selection fields support the variant filters and ad-hoc filtering.
+  // ────────────────────────────────────────────────────────────────────
+
+  @UI.selectionField: [{ position: 10 }]
+  DispositionBand;
+
+  @UI.selectionField: [{ position: 20 }]
+  Status;
+
+  @UI.selectionField: [{ position: 30 }]
+  Priority;
+
+  @UI.selectionField: [{ position: 40 }]
+  IntakePath;
+
+  @UI.selectionField: [{ position: 50 }]
+  AssignedTo;
+
+  @UI.selectionField: [{ position: 60 }]
+  SPLListType;
+
+  @UI.selectionField: [{ position: 70 }]
+  BPCountry;
+
+  @UI.selectionField: [{ position: 80 }]
+  AgedDays;
+
+  // ────────────────────────────────────────────────────────────────────
+  // Line Item (table columns)
+  // §6.4: "The list is the product. Optimise scan–decide–next."
+  //
+  // Column order designed for left-to-right scan:
+  //   WHO → AGAINST WHAT → VERDICT → URGENCY → CONTEXT → ASSIGNMENT
+  //
+  // §6.4: "Never show a bare confidence number."
+  //   MatchPercentage is deliberately excluded from LineItem.
+  //   MatchBasis provides the human-readable match reasoning instead.
+  //   The percentage is available on the Object Page for those who want it.
+  // ────────────────────────────────────────────────────────────────────
+
+  @UI.lineItem: [{
+    position: 10,
+    label: 'Case',
+    importance: #HIGH
+  }]
+  CaseID;
+
+  @UI.lineItem: [{
+    position: 20,
+    label: 'Business Partner',
+    importance: #HIGH
+  }]
+  BusinessPartnerName;
+
+  @UI.lineItem: [{
+    position: 30,
+    label: 'SPL Entry',
+    importance: #HIGH
+  }]
+  SPLEntryName;
+
+  // §6.4: "SAP semantic colours only. Never encode meaning in colour alone —
+  //         icon plus text label."
+  // Criticality renders as ObjectStatus with icon + coloured text.
+  @UI.lineItem: [{
+    position: 40,
+    label: 'Disposition',
+    importance: #HIGH,
+    criticality: 'DispositionBandCriticality',
+    criticalityRepresentation: #WITH_ICON
+  }]
+  DispositionBand;
+
+  @UI.lineItem: [{
+    position: 50,
+    label: 'Status',
+    importance: #HIGH,
+    criticality: 'StatusCriticality',
+    criticalityRepresentation: #WITH_ICON
+  }]
+  Status;
+
+  @UI.lineItem: [{
+    position: 60,
+    label: 'Priority',
+    importance: #MEDIUM,
+    criticality: 'PriorityCriticality',
+    criticalityRepresentation: #WITH_ICON
+  }]
+  Priority;
+
+  // §6.4: "Never show a bare confidence number. Show the band and the evidence."
+  // MatchBasis is the evidence — *why* GTS matched, not how much.
+  @UI.lineItem: [{
+    position: 70,
+    label: 'Match Basis',
+    importance: #MEDIUM
+  }]
+  MatchBasis;
+
+  @UI.lineItem: [{
+    position: 80,
+    label: 'Path',
+    importance: #MEDIUM
+  }]
+  IntakePath;
+
+  @UI.lineItem: [{
+    position: 90,
+    label: 'List',
+    importance: #MEDIUM
+  }]
+  SPLListType;
+
+  @UI.lineItem: [{
+    position: 100,
+    label: 'Age (days)',
+    importance: #MEDIUM
+  }]
+  AgedDays;
+
+  @UI.lineItem: [{
+    position: 110,
+    label: 'Assigned To',
+    importance: #LOW
+  }]
+  AssignedTo;
+
+  @UI.lineItem: [{
+    position: 120,
+    label: 'Country',
+    importance: #LOW
+  }]
+  BPCountry;
+
+  @UI.lineItem: [{
+    position: 130,
+    label: 'Value at Risk',
+    importance: #LOW
+  }]
+  OrderValue;
+
+  // ────────────────────────────────────────────────────────────────────
+  // Presentation Variant (default sort)
+  // §6.4: "Impact-based queue — prioritise by order value at risk
+  //         and ship date, not FIFO." (§7, but applies to default sort)
+  // Default: Escalate band first, then by priority, then by age descending.
+  // ────────────────────────────────────────────────────────────────────
+
+  @UI.presentationVariant: [{
+    qualifier: 'Default',
+    text: 'Default',
+    sortOrder: [
+      { by: 'DispositionBand', direction: #ASC },
+      { by: 'Priority', direction: #ASC },
+      { by: 'AgedDays', direction: #DESC }
+    ],
+    visualizations: [{ type: #AS_LINEITEM }]
+  }]
+  CaseUUID;
+
+  // ────────────────────────────────────────────────────────────────────
+  // Selection Variants (pre-built worklist views)
+  // §6.4: "Ship pre-built variants: my queue, high value at risk,
+  //         escalated, aged over 5 days."
+  // ────────────────────────────────────────────────────────────────────
+
+  @UI.selectionVariant: [{
+    qualifier: 'AllOpen',
+    text: 'All Open Cases',
+    filter: [
+      { path: 'Status', operator: #NE, value1: 'CLEARED' },
+      { path: 'Status', operator: #NE, value1: 'AUTO_CLEARED' },
+      { path: 'Status', operator: #NE, value1: 'CONFIRMED' }
+    ]
+  }]
+
+  @UI.selectionVariant: [{
+    qualifier: 'MyQueue',
+    text: 'My Queue',
+    filter: [
+      { path: 'AssignedTo', operator: #EQ, value1: '$user.id' },
+      { path: 'Status', operator: #NE, value1: 'CLEARED' },
+      { path: 'Status', operator: #NE, value1: 'AUTO_CLEARED' }
+    ]
+  }]
+
+  @UI.selectionVariant: [{
+    qualifier: 'Escalated',
+    text: 'Escalated',
+    filter: [
+      { path: 'DispositionBand', operator: #EQ, value1: 'ESCALATE' }
+    ]
+  }]
+
+  @UI.selectionVariant: [{
+    qualifier: 'HighValueAtRisk',
+    text: 'High Value at Risk',
+    filter: [
+      { path: 'OrderValue', operator: #GT, value1: '0' },
+      { path: 'Status', operator: #NE, value1: 'CLEARED' },
+      { path: 'Status', operator: #NE, value1: 'AUTO_CLEARED' }
+    ]
+  }]
+
+  @UI.selectionVariant: [{
+    qualifier: 'Aged',
+    text: 'Aged Over 5 Days',
+    filter: [
+      { path: 'AgedDays', operator: #GE, value1: '5' },
+      { path: 'Status', operator: #NE, value1: 'CLEARED' },
+      { path: 'Status', operator: #NE, value1: 'AUTO_CLEARED' }
+    ]
+  }]
+
+  @UI.selectionVariant: [{
+    qualifier: 'ProposeClear',
+    text: 'Ready to Clear',
+    filter: [
+      { path: 'DispositionBand', operator: #EQ, value1: 'PROPOSE_CLEAR' },
+      { path: 'Status', operator: #EQ, value1: 'AGENT_COMPLETE' }
+    ]
+  }]
+
+  // Deliberate: no "Auto-cleared" variant in the default set.
+  // Those are handled; showing them invites second-guessing the policy.
+  // Available via filter bar for sampling/audit.
+
+}

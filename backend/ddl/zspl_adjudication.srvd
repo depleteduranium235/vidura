@@ -1,0 +1,5 @@
+@EndUserText.label: 'SPL Adjudication Service'
+define service ZSPL_Adjudication {
+  expose ZC_SPL_AdjCase     as AdjudicationCase;
+  expose ZC_SPL_AdjEvidence as EvidenceItem;
+}

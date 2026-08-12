@@ -1,0 +1,126 @@
+managed implementation in class zbp_i_spl_adj_case unique;
+strict ( 2 );
+
+define behavior for ZI_SPL_AdjCase alias AdjudicationCase
+persistent table zspl_adj_case
+lock master
+authorization master ( instance )
+etag master ChangedAt
+{
+  // Key: early numbering (sidecar writes with UUID)
+  field ( readonly ) CaseUUID;
+  field ( readonly ) CreatedBy, CreatedAt, ChangedBy, ChangedAt;
+  field ( readonly ) DispositionBandCriticality, StatusCriticality,
+                     PriorityCriticality, AgedDays;
+
+  // Sidecar writes everything; UI is read-only except human decision fields
+  field ( readonly : update ) CaseID, BusinessPartnerID, BusinessPartnerName,
+    BPCountry, BPCity, BPEntityType, BPRegistrationNo,
+    SPLEntryID, SPLEntryName, SPLListType, SPLProgramme, SPLEntityType,
+    MatchPercentage, MatchBasis, ComparisonRule,
+    IntakePath, DispositionBand,
+    AgentRationale, WhatWouldChangeMyMind, EvidenceSummary,
+    PrecedentExists, PrecedentCaseID,
+    DocumentType, DocumentNumber, OrderValue, OrderCurrency,
+    ShipToCountry, SoldToPartner, EndUseCode,
+    ModelVersion, PromptVersion, BandLogicVersion, TaxonomyVersion,
+    ProcessingTimestamp, ElapsedMilliseconds;
+
+  // Human-editable fields
+  field ( features : instance ) Status, Priority, AssignedTo,
+    HumanDecision, HumanUser, HumanComment, DecisionTimestamp;
+
+  create;
+  update;
+
+  // Actions matching §3.4 decision rights
+  action proposeClear result [1] $self;
+  action approve result [1] $self;
+  action escalate result [1] $self;
+  action assign parameter ZA_SPL_AssignParams result [1] $self;
+
+  // Composition
+  association _EvidenceItems { create; }
+
+  mapping for zspl_adj_case corresponding
+  {
+    CaseUUID           = case_uuid;
+    CaseID             = case_id;
+    BusinessPartnerID  = bp_id;
+    BusinessPartnerName = bp_name;
+    BPCountry          = bp_country;
+    BPCity             = bp_city;
+    BPEntityType       = bp_entity_type;
+    BPRegistrationNo   = bp_registration_no;
+    SPLEntryID         = spl_entry_id;
+    SPLEntryName       = spl_entry_name;
+    SPLListType        = spl_list_type;
+    SPLProgramme       = spl_programme;
+    SPLEntityType      = spl_entity_type;
+    MatchPercentage    = match_percentage;
+    MatchBasis         = match_basis;
+    ComparisonRule     = comparison_rule;
+    IntakePath         = intake_path;
+    DispositionBand    = disposition_band;
+    Status             = status;
+    Priority           = priority;
+    AssignedTo         = assigned_to;
+    AgentRationale     = agent_rationale;
+    WhatWouldChangeMyMind = what_would_change;
+    EvidenceSummary    = evidence_summary;
+    PrecedentExists    = precedent_exists;
+    PrecedentCaseID    = precedent_case_id;
+    DocumentType       = doc_type;
+    DocumentNumber     = doc_number;
+    OrderValue         = order_value;
+    OrderCurrency      = order_currency;
+    ShipToCountry      = ship_to_country;
+    SoldToPartner      = sold_to_bp;
+    EndUseCode         = end_use_code;
+    ModelVersion       = model_version;
+    PromptVersion      = prompt_version;
+    BandLogicVersion   = band_logic_version;
+    TaxonomyVersion    = taxonomy_version;
+    ProcessingTimestamp = processing_ts;
+    ElapsedMilliseconds = elapsed_ms;
+    HumanDecision      = human_decision;
+    HumanUser          = human_user;
+    HumanComment       = human_comment;
+    DecisionTimestamp   = decision_ts;
+    CreatedBy          = created_by;
+    CreatedAt          = created_at;
+    ChangedBy          = changed_by;
+    ChangedAt          = changed_at;
+  }
+}
+
+define behavior for ZI_SPL_AdjEvidence alias EvidenceItem
+persistent table zspl_adj_evidence
+lock dependent by _Case
+authorization dependent by _Case
+etag dependent by _Case
+{
+  field ( readonly ) EvidenceUUID, CaseUUID;
+  field ( readonly ) CategoryCriticality;
+
+  // Evidence items are written by the sidecar, read-only in UI
+  create;
+  update;
+
+  association _Case;
+
+  mapping for zspl_adj_evidence corresponding
+  {
+    EvidenceUUID  = evidence_uuid;
+    CaseUUID      = case_uuid;
+    Category      = category;
+    DataElement   = data_element;
+    BPValue       = bp_value;
+    SPLValue      = spl_value;
+    Assessment    = assessment;
+    DataAvailable = data_available;
+    SortOrder     = sort_order;
+    SourceSystem  = source_system;
+    SourceField   = source_field;
+  }
+}

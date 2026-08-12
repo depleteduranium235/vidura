@@ -1,0 +1,122 @@
+[
+  {
+    "EvidenceUUID": "b1c2d3e4-f5a6-7890-bcde-f12345678901",
+    "CaseUUID": "a1b2c3d4-e5f6-7890-abcd-ef1234567802",
+    "Category": "Dispositive Exclusion",
+    "CategoryCriticality": 5,
+    "DataElement": "Entity Type",
+    "BPValue": "Legal entity (GmbH, HRB 54321)",
+    "SPLValue": "Natural person (DOB 1958-03-14)",
+    "Assessment": "SPL entry is an individual; BP is a registered German corporation. Identity is structurally impossible unless the individual controls the entity.",
+    "DataAvailable": true,
+    "SortOrder": 1
+  },
+  {
+    "EvidenceUUID": "b1c2d3e4-f5a6-7890-bcde-f12345678902",
+    "CaseUUID": "a1b2c3d4-e5f6-7890-abcd-ef1234567802",
+    "Category": "Strong Discriminator",
+    "CategoryCriticality": 3,
+    "DataElement": "Country of Registration",
+    "BPValue": "Germany (DE)",
+    "SPLValue": "Russian Federation (nationality)",
+    "Assessment": "BP is a German-registered entity. SPL entry is a Russian national. No German nexus in the listing.",
+    "DataAvailable": true,
+    "SortOrder": 2
+  },
+  {
+    "EvidenceUUID": "b1c2d3e4-f5a6-7890-bcde-f12345678903",
+    "CaseUUID": "a1b2c3d4-e5f6-7890-abcd-ef1234567802",
+    "Category": "Strong Discriminator",
+    "CategoryCriticality": 3,
+    "DataElement": "Name Rarity",
+    "BPValue": "Schmidt (common German surname)",
+    "SPLValue": "SCHMIDT, Hans-Peter",
+    "Assessment": "'Schmidt' appears in 847 distinct SPL entries. Match driven by a high-frequency surname token with no supporting identifiers.",
+    "DataAvailable": true,
+    "SortOrder": 3
+  },
+  {
+    "EvidenceUUID": "b1c2d3e4-f5a6-7890-bcde-f12345678904",
+    "CaseUUID": "a1b2c3d4-e5f6-7890-abcd-ef1234567802",
+    "Category": "Neutral",
+    "CategoryCriticality": 0,
+    "DataElement": "Date of Birth",
+    "BPValue": "",
+    "SPLValue": "1958-03-14",
+    "Assessment": "BP has no DOB (legal entity). Cannot be used to discriminate or corroborate.",
+    "DataAvailable": false,
+    "SortOrder": 4
+  },
+  {
+    "EvidenceUUID": "b1c2d3e4-f5a6-7890-bcde-f12345678905",
+    "CaseUUID": "a1b2c3d4-e5f6-7890-abcd-ef1234567802",
+    "Category": "Neutral",
+    "CategoryCriticality": 0,
+    "DataElement": "Address",
+    "BPValue": "Grosse Elbstrasse 14, Hamburg",
+    "SPLValue": "No address listed",
+    "Assessment": "SPL entry has no address on file. Cannot compare.",
+    "DataAvailable": false,
+    "SortOrder": 5
+  },
+  {
+    "EvidenceUUID": "b1c2d3e4-f5a6-7890-bcde-f12345678911",
+    "CaseUUID": "a1b2c3d4-e5f6-7890-abcd-ef1234567803",
+    "Category": "Strong Corroborator",
+    "CategoryCriticality": 1,
+    "DataElement": "Name Match",
+    "BPValue": "Petrochemical Supplies FZE",
+    "SPLValue": "PETRO SUPPLIES TRADING FZE",
+    "Assessment": "Near-identical name with minor variation. Distinctive name — not a common trading name pattern.",
+    "DataAvailable": true,
+    "SortOrder": 1
+  },
+  {
+    "EvidenceUUID": "b1c2d3e4-f5a6-7890-bcde-f12345678912",
+    "CaseUUID": "a1b2c3d4-e5f6-7890-abcd-ef1234567803",
+    "Category": "Strong Corroborator",
+    "CategoryCriticality": 1,
+    "DataElement": "Address Proximity",
+    "BPValue": "Al Wahda Building, Floor 3, Sharjah FZ",
+    "SPLValue": "Al Wahda Building, Floor 7, Sharjah FZ",
+    "Assessment": "Same building in same free zone. Different floor does not exclude.",
+    "DataAvailable": true,
+    "SortOrder": 2
+  },
+  {
+    "EvidenceUUID": "b1c2d3e4-f5a6-7890-bcde-f12345678913",
+    "CaseUUID": "a1b2c3d4-e5f6-7890-abcd-ef1234567803",
+    "Category": "Weak Corroborator",
+    "CategoryCriticality": 2,
+    "DataElement": "Industry Sector",
+    "BPValue": "Petrochemicals / chemicals trading",
+    "SPLValue": "Oil and petrochemical products (from remarks)",
+    "Assessment": "Same broad industry sector. Common for the jurisdiction but still corroborating when combined with name and address.",
+    "DataAvailable": true,
+    "SortOrder": 3
+  },
+  {
+    "EvidenceUUID": "b1c2d3e4-f5a6-7890-bcde-f12345678914",
+    "CaseUUID": "a1b2c3d4-e5f6-7890-abcd-ef1234567803",
+    "Category": "Weak Corroborator",
+    "CategoryCriticality": 2,
+    "DataElement": "Diversion Risk",
+    "BPValue": "Ship-to: Bandar Abbas, IR (diverges from sold-to: Sharjah, AE)",
+    "SPLValue": "Programme: IRAN",
+    "Assessment": "Blocked document shows goods destined for Iran via UAE intermediary. Consistent with the sanctioned entity's programme code.",
+    "DataAvailable": true,
+    "SortOrder": 4
+  },
+  {
+    "EvidenceUUID": "b1c2d3e4-f5a6-7890-bcde-f12345678915",
+    "CaseUUID": "a1b2c3d4-e5f6-7890-abcd-ef1234567803",
+    "Category": "Neutral",
+    "CategoryCriticality": 0,
+    "DataElement": "Registration Number",
+    "BPValue": "SHJ-FZ-2019-4421",
+    "SPLValue": "No registration number listed",
+    "Assessment": "SPL entry has no listed registration. The one dispositive identifier that could confirm or exclude is unavailable.",
+    "DataAvailable": false,
+    "SortOrder": 5
+  }
+]

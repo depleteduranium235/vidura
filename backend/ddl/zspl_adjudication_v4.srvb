@@ -1,0 +1,6 @@
+@EndUserText.label: 'SPL Adjudication OData V4'
+define service binding ZSPL_ADJUDICATION_V4
+  provider contract odata_v4_ui
+  service ZSPL_Adjudication
+{
+}
