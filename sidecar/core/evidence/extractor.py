@@ -12,12 +12,14 @@ to a disposition.
 """
 
 import json
+import os
 import time
 from typing import Optional
 
+import httpx
 from anthropic import Anthropic
 
-from ..config import MODEL_ID, PROMPT_VERSION
+from ..config import MODEL_ID, PROMPT_VERSION, ANTHROPIC_BASE_URL, CORP_CERT_BUNDLE
 from ..models.schemas import (
     EvidenceCategory,
     EvidenceItem,
@@ -47,7 +49,17 @@ async def extract_evidence(
     Returns (evidence_ledger, elapsed_ms).
     """
     if client is None:
-        client = Anthropic()
+        ssl_verify: bool | str = True
+        if os.environ.get("VIDURA_SSL_VERIFY", "1") == "0":
+            ssl_verify = False
+        elif CORP_CERT_BUNDLE.exists():
+            ssl_verify = str(CORP_CERT_BUNDLE)
+
+        http_client = httpx.Client(verify=ssl_verify)
+        client = Anthropic(
+            base_url=ANTHROPIC_BASE_URL,
+            http_client=http_client,
+        )
 
     user_prompt = build_user_prompt(
         bp_name=hit.bp_name,
