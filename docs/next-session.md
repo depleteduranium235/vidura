@@ -20,7 +20,7 @@ fnm env --shell power-shell | ForEach-Object { Invoke-Expression $_ }
 `PYTHONIOENCODING=utf-8` is not optional. Without it any script printing GTS text
 dies with a `cp1252` `UnicodeEncodeError`.
 
-Tests: `cd sidecar && python -m pytest tests/ -q` → **66 passing**.
+Tests: `cd sidecar && python -m pytest tests/ -q` → **125 passing**.
 
 ## Credentials
 
@@ -53,6 +53,8 @@ Do not write to AGP.
 | `sidecar/core/bands/` | Deterministic band engine (§3.1 principles) |
 | `sidecar/core/evidence/` | LLM extraction; `prompt.py` is a controlled artefact (§8) |
 | `sidecar/core/models/` | Shared Pydantic schemas |
+| `sidecar/core/backtest/` | §11.2 Phase 1 harness — labels, scoring, spreadsheet + credibility argument |
+| `sidecar/run_backtest.py` | Backtest CLI. Read-only; exits non-zero if the §8 safety gate fails |
 | `webapp/` | Fiori Elements List Report + Object Page, runs on mock data |
 | `backend/ddl/` | Z table, CDS views, RAP behaviour definition — **spec only**, needs 200 |
 
@@ -68,7 +70,7 @@ Do not write to AGP.
 
 ---
 
-## Build this first: the Phase 1 backtest harness
+## The Phase 1 backtest harness — BUILT, not yet run against AGP
 
 §11.2 Phase 1 — *"Prove reasoning offline. Batch mode, no writeback. Run against
 historical hits, compare to human decisions, tune the evidence taxonomy. Output:
@@ -76,6 +78,21 @@ a spreadsheet and a credibility argument."*
 
 Ground truth is already in AGP: **124 human decisions, 91 with release reasons,
 18 on SPL regulations.** No client extract needed to start.
+
+**Status:** implemented and tested offline (56 harness tests, 125 total). It has
+**not** been run against live AGP — that needs the password. Do that first:
+
+```bash
+cd sidecar
+printf '%s\n' 'PASSWORD' | python run_backtest.py --dump-records records.json
+```
+
+`--dump-records` saves the fetched records so the taxonomy can then be tuned
+offline with `--from-records records.json` without re-reading AGP or re-spending
+LLM calls. Add `--mock` to prove the read/map/band path with no LLM at all.
+Output lands in `sidecar/backtest_out/` — read `backtest.md` first.
+
+The run exits non-zero if the §8 gate fails, so it can gate a build.
 
 ### Design
 
@@ -110,6 +127,20 @@ Ground truth is already in AGP: **124 human decisions, 91 with release reasons,
   identifiers and remarks are not
 - So this validates the *mechanism*, not adjudication quality. Quality needs
   either the Z view (client 200) or a real client extract
+
+The harness emits all of these itself — `core/backtest/report.py` holds the
+established facts as `STATIC_CAVEATS` and computes the run-specific ones from the
+run's own numbers, so the prose can't drift from the figures. It also flags two
+things worth knowing before quoting any result:
+
+- **Auto-clear is structurally unreachable.** It requires a matching precedent
+  (§3.4) and `core/precedent/store.py` is still an in-memory stub, so the best a
+  correctly-cleared case can score is Propose Clear. The zero in that column is
+  an artefact, not a finding
+- **Review is counted as an abstention**, separately from both agreement and
+  divergence. On this data a thin ledger routing to Review is the band engine
+  working as specified (§3.1 #3), so scoring it either way would mislead — and a
+  wall of Reviews with a 0% agreement rate is the expected result, not a failure
 
 ---
 

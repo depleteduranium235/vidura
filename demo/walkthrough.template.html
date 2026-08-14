@@ -1,0 +1,741 @@
+<title>Vidura Adjudication Worklist</title>
+
+<script id="case-data" type="application/json">__DATA__</script>
+
+<style>
+  /* ---------------------------------------------------------------- tokens
+     Palette is SAP Horizon-derived on purpose: CLAUDE.md mandates SAP
+     semantic colours keyed to Criticality integers (0 None, 1 Negative,
+     2 Critical, 3 Positive, 5 Information), so the demo speaks the same
+     visual language as the real app rather than inventing one. Neutrals
+     carry a cool blue bias to match SAP's greys.
+     Light palette is complete on bare :root; dark redefines tokens only. */
+  :root {
+    color-scheme: light;
+
+    --ground:        #f0f2f4;
+    --surface:       #ffffff;
+    --surface-sunk:  #f7f8f9;
+    --line:          #d6dce2;
+    --line-soft:     #e6eaee;
+
+    --ink:           #17232f;
+    --ink-muted:     #55697c;
+    --ink-faint:     #7d8fa1;
+
+    --accent:        #0064d9;
+    --accent-soft:   #e8f1fd;
+
+    /* Criticality 1 — Negative */
+    --neg:           #a80000;
+    --neg-bg:        #fbe9e9;
+    /* Criticality 2 — Critical */
+    --crit:          #b04a00;
+    --crit-bg:       #fdefe4;
+    /* Criticality 3 — Positive */
+    --pos:           #1f6b38;
+    --pos-bg:        #e8f4ec;
+    /* Criticality 5 — Information */
+    --info:          #0064d9;
+    --info-bg:       #e8f1fd;
+    /* Criticality 0 — None */
+    --none-fg:       #55697c;
+    --none-bg:       #eceff2;
+
+    --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-data: "Cascadia Mono", Consolas, ui-monospace, "SF Mono", monospace;
+
+    --step--1: 0.75rem;
+    --step-0:  0.8125rem;
+    --step-1:  0.9375rem;
+    --step-2:  1.125rem;
+    --step-3:  1.5rem;
+    --step-4:  2rem;
+
+    --radius: 4px;
+    --shadow: 0 1px 2px rgba(23, 35, 47, .08), 0 4px 12px rgba(23, 35, 47, .06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+
+      --ground:       #1a2028;
+      --surface:      #232a33;
+      --surface-sunk: #1f262e;
+      --line:         #3a4553;
+      --line-soft:    #2e3742;
+
+      --ink:          #e7ecf1;
+      --ink-muted:    #a6b4c2;
+      --ink-faint:    #7f8fa0;
+
+      --accent:       #7cb4f8;
+      --accent-soft:  #1c3350;
+
+      --neg:          #ff9a9a;
+      --neg-bg:       #40232a;
+      --crit:         #ffb166;
+      --crit-bg:      #3d2c1c;
+      --pos:          #74cf90;
+      --pos-bg:       #1e3628;
+      --info:         #7cb4f8;
+      --info-bg:      #1c3350;
+      --none-fg:      #a6b4c2;
+      --none-bg:      #2c343d;
+
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .3);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --ground:       #1a2028;
+    --surface:      #232a33;
+    --surface-sunk: #1f262e;
+    --line:         #3a4553;
+    --line-soft:    #2e3742;
+
+    --ink:          #e7ecf1;
+    --ink-muted:    #a6b4c2;
+    --ink-faint:    #7f8fa0;
+
+    --accent:       #7cb4f8;
+    --accent-soft:  #1c3350;
+
+    --neg:          #ff9a9a;
+    --neg-bg:       #40232a;
+    --crit:         #ffb166;
+    --crit-bg:      #3d2c1c;
+    --pos:          #74cf90;
+    --pos-bg:       #1e3628;
+    --info:         #7cb4f8;
+    --info-bg:      #1c3350;
+    --none-fg:      #a6b4c2;
+    --none-bg:      #2c343d;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .3);
+  }
+
+  /* ----------------------------------------------------------------- base */
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: var(--step-1);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  h1, h2, h3 { text-wrap: balance; margin: 0; letter-spacing: -0.015em; }
+  h1 { font-size: var(--step-4); font-weight: 650; line-height: 1.15; }
+  h2 { font-size: var(--step-2); font-weight: 640; }
+  h3 { font-size: var(--step-1); font-weight: 640; }
+  p  { margin: 0; }
+
+  .prose { max-width: 68ch; color: var(--ink-muted); }
+
+  .eyebrow {
+    font-size: var(--step--1);
+    font-weight: 620;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  code, .mono { font-family: var(--font-data); font-size: 0.92em; }
+
+  /* --------------------------------------------------------------- header */
+  header { display: flex; flex-direction: column; gap: 14px; }
+
+  .title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .codename {
+    font-family: var(--font-data);
+    font-size: var(--step--1);
+    padding: 3px 8px;
+    border-radius: var(--radius);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .notice {
+    display: flex;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--crit);
+    border-radius: var(--radius);
+    font-size: var(--step-0);
+    color: var(--ink-muted);
+    max-width: 78ch;
+  }
+  .notice strong { color: var(--ink); font-weight: 640; }
+
+  /* ---------------------------------------------------------- band tiles */
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    border-top: 3px solid var(--tile-accent, var(--none-fg));
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .tile-count {
+    font-size: var(--step-3);
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    color: var(--tile-accent, var(--ink));
+  }
+  .tile-name { font-size: var(--step-0); font-weight: 620; color: var(--ink); }
+  .tile-note { font-size: var(--step--1); color: var(--ink-faint); }
+
+  /* -------------------------------------------------------------- panels */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line-soft);
+    background: var(--surface-sunk);
+  }
+  .panel-head .hint { font-size: var(--step--1); color: var(--ink-faint); }
+
+  .scroll-x { overflow-x: auto; }
+
+  /* --------------------------------------------------------------- table */
+  table { border-collapse: collapse; width: 100%; font-size: var(--step-0); }
+
+  thead th {
+    text-align: left;
+    font-weight: 620;
+    font-size: var(--step--1);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+    background: var(--surface-sunk);
+  }
+
+  tbody td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+
+  tbody tr:last-child td { border-bottom: 0; }
+
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* worklist rows behave as a selection list */
+  tr.row { cursor: pointer; }
+  tr.row:hover td { background: var(--surface-sunk); }
+  tr.row[aria-selected="true"] td { background: var(--accent-soft); }
+  tr.row[aria-selected="true"] td:first-child {
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  tr.row:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  .cell-strong { font-weight: 620; color: var(--ink); }
+  .cell-sub { display: block; font-size: var(--step--1); color: var(--ink-faint); }
+
+  /* ---------------------------------------------------------------- pill */
+  .pill {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 10px;
+    font-size: var(--step--1);
+    font-weight: 620;
+    white-space: nowrap;
+  }
+  .c1 { background: var(--neg-bg);  color: var(--neg); }
+  .c2 { background: var(--crit-bg); color: var(--crit); }
+  .c3 { background: var(--pos-bg);  color: var(--pos); }
+  .c5 { background: var(--info-bg); color: var(--info); }
+  .c0 { background: var(--none-bg); color: var(--none-fg); }
+
+  /* -------------------------------------------------------- detail panel */
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1px;
+    background: var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .fact { background: var(--surface); padding: 12px 16px; }
+  .fact dt {
+    font-size: var(--step--1);
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 620;
+    margin-bottom: 3px;
+  }
+  .fact dd { margin: 0; font-size: var(--step-0); color: var(--ink); }
+
+  .assessment { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  .assessment-block { display: flex; flex-direction: column; gap: 5px; }
+  .assessment-block .label {
+    font-size: var(--step--1);
+    font-weight: 620;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .assessment-block p { font-size: var(--step-0); color: var(--ink-muted); max-width: 78ch; }
+
+  .change-mind {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 10px 12px;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+  .change-mind p { color: var(--ink); }
+
+  .truncation-note {
+    font-size: var(--step--1);
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+
+  /* ledger */
+  .ledger-values { font-family: var(--font-data); font-size: var(--step--1); }
+  .ledger-values .vs { color: var(--ink-faint); }
+
+  .missing {
+    display: inline-block;
+    padding: 1px 6px;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+    font-size: var(--step--1);
+    color: var(--ink-faint);
+    font-family: var(--font-ui);
+  }
+
+  tr.no-data td { background: repeating-linear-gradient(
+      135deg,
+      transparent, transparent 6px,
+      var(--surface-sunk) 6px, var(--surface-sunk) 12px); }
+
+  /* ------------------------------------------------------------ taxonomy */
+  .scale {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1px;
+    background: var(--line-soft);
+  }
+  .scale-item {
+    flex: 1 1 130px;
+    background: var(--surface);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    border-top: 3px solid var(--item-accent);
+  }
+  .scale-item .n {
+    font-family: var(--font-data);
+    font-size: var(--step--1);
+    color: var(--ink-faint);
+  }
+  .scale-item .t { font-size: var(--step-0); font-weight: 620; }
+  .scale-item .d { font-size: var(--step--1); color: var(--ink-faint); }
+
+  /* --------------------------------------------------------------- steps */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1px; background: var(--line-soft); }
+  .step { background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+  .step .n {
+    font-family: var(--font-data);
+    font-size: var(--step--1);
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .step h3 { font-size: var(--step-0); }
+  .step p { font-size: var(--step--1); color: var(--ink-muted); }
+
+  /* -------------------------------------------------------------- footer */
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: var(--step-0);
+    color: var(--ink-muted);
+  }
+  footer ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  footer .meta { font-family: var(--font-data); font-size: var(--step--1); color: var(--ink-faint); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  @media (max-width: 640px) {
+    h1 { font-size: var(--step-3); }
+    .wrap { padding: 24px 14px 48px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="title-row">
+      <h1>SPL Hit Adjudication</h1>
+      <span class="codename">Vidura</span>
+    </div>
+    <p class="prose">
+      SAP GTS blocks a business partner whenever its name resembles an entry on a
+      sanctioned party list. Someone then has to decide whether it is genuinely
+      that party. Most are not — but each one still has to be read, reasoned
+      about, and documented. This agent does the reading and lays out the
+      evidence; a fixed rule, not the model, sets the disposition.
+    </p>
+    <div class="notice">
+      <div>
+        <strong>A walkthrough, not the running app.</strong>
+        These are five illustrative cases with synthetic business partners and SPL
+        entries — invented for demonstration, not real screening results. The
+        reasoning and evidence below is genuine output from the adjudication
+        pipeline. The Fiori app itself currently runs locally against a mock
+        OData service; it is not deployed to SAP and not connected to AGP.
+      </div>
+    </div>
+  </header>
+
+  <section aria-labelledby="bands-h">
+    <h2 id="bands-h" style="margin-bottom:12px">Where the five cases landed</h2>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="worklist-h">
+    <div class="panel-head">
+      <h2 id="worklist-h">Worklist</h2>
+      <span class="hint">Select a case to see how the agent reasoned</span>
+    </div>
+    <div class="scroll-x">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Case</th>
+            <th scope="col">Business Partner</th>
+            <th scope="col">SPL Entry</th>
+            <th scope="col">Disposition</th>
+            <th scope="col">Status</th>
+            <th scope="col">Priority</th>
+            <th scope="col">Match Basis</th>
+            <th scope="col" class="num">Age</th>
+          </tr>
+        </thead>
+        <tbody id="worklist-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="detail-h" aria-live="polite">
+    <div class="panel-head">
+      <h2 id="detail-h">Case detail</h2>
+      <span class="hint" id="detail-case-id"></span>
+    </div>
+    <dl class="facts" id="detail-facts"></dl>
+    <div class="assessment" id="detail-assessment"></div>
+    <div class="panel-head" style="border-top:1px solid var(--line-soft)">
+      <h3>Evidence ledger</h3>
+      <span class="hint">Dispositive items first, as the app sorts them</span>
+    </div>
+    <div class="scroll-x">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Category</th>
+            <th scope="col">Data element</th>
+            <th scope="col">Business partner vs SPL entry</th>
+            <th scope="col">Assessment</th>
+          </tr>
+        </thead>
+        <tbody id="ledger-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="taxonomy-h">
+    <div class="panel-head">
+      <h2 id="taxonomy-h">How evidence is classified</h2>
+      <span class="hint">A fixed scale, from rules-it-out to confirms-it</span>
+    </div>
+    <div class="scale">
+      <div class="scale-item" style="--item-accent: var(--info)">
+        <span class="n">1</span><span class="t">Dispositive Exclusion</span>
+        <span class="d">Identity is impossible</span>
+      </div>
+      <div class="scale-item" style="--item-accent: var(--pos)">
+        <span class="n">2</span><span class="t">Strong Discriminator</span>
+        <span class="d">Very unlikely</span>
+      </div>
+      <div class="scale-item" style="--item-accent: var(--none-fg)">
+        <span class="n">3</span><span class="t">Weak Discriminator</span>
+        <span class="d">Mildly reduces likelihood</span>
+      </div>
+      <div class="scale-item" style="--item-accent: var(--none-fg)">
+        <span class="n">4</span><span class="t">Neutral</span>
+        <span class="d">No information either way</span>
+      </div>
+      <div class="scale-item" style="--item-accent: var(--crit)">
+        <span class="n">5</span><span class="t">Weak Corroborator</span>
+        <span class="d">Mildly increases likelihood</span>
+      </div>
+      <div class="scale-item" style="--item-accent: var(--neg)">
+        <span class="n">6</span><span class="t">Strong Corroborator</span>
+        <span class="d">Identity likely</span>
+      </div>
+      <div class="scale-item" style="--item-accent: var(--neg)">
+        <span class="n">7</span><span class="t">Dispositive Confirmation</span>
+        <span class="d">Identity established</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="how-h">
+    <div class="panel-head">
+      <h2 id="how-h">How a case is produced</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="n">01</span>
+        <h3>GTS is read, never written</h3>
+        <p>
+          The blocked partner, its addresses and every matched SPL entry are read
+          over OData. One case is created per partner-address-to-entry pair, so
+          each identity question is judged on its own.
+        </p>
+      </div>
+      <div class="step">
+        <span class="n">02</span>
+        <h3>The model fills the ledger</h3>
+        <p>
+          It compares the two records element by element and classifies each
+          finding on the scale above, with a written justification. Missing data
+          is recorded as neutral — absence of evidence is never treated as
+          evidence of absence.
+        </p>
+      </div>
+      <div class="step">
+        <span class="n">03</span>
+        <h3>A fixed rule sets the band</h3>
+        <p>
+          The disposition comes from the ledger by deterministic logic that is
+          non-compensatory: one dispositive finding outweighs any number of
+          opposing weak ones. The model never emits a score, and no number is
+          ever the reason for a decision.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>Worth knowing before you read too much into it</strong></p>
+    <ul>
+      <li>
+        The agent proposes; it does not release. Executing a release stays with a
+        named human in their own SAP session, under their own user ID.
+      </li>
+      <li>
+        Auto-clear is shown for completeness but is not reachable yet — it
+        requires a matching precedent, and the precedent store is still a stub.
+      </li>
+      <li>
+        The reasoning has been proved against live GTS data in the AGP sandbox,
+        but that system's partner records carry almost none of the discriminators
+        real adjudication needs, so quality still has to be demonstrated on a
+        client extract.
+      </li>
+    </ul>
+    <p class="meta" id="footer-meta"></p>
+  </footer>
+
+</div>
+
+<script>
+  const DATA = JSON.parse(document.getElementById("case-data").textContent);
+  const CASES = DATA.cases;
+  const EVIDENCE = DATA.evidence;
+
+  const BANDS = [
+    { name: "Auto-clear",    crit: 5, note: "Cleared without review" },
+    { name: "Propose Clear", crit: 3, note: "Clear, pending sign-off" },
+    { name: "Review",        crit: 2, note: "Needs a human judgement" },
+    { name: "Escalate",      crit: 1, note: "Senior reviewer required" },
+  ];
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  /* ------------------------------------------------------------ band tiles */
+  function renderTiles() {
+    document.getElementById("tiles").innerHTML = BANDS.map((b) => {
+      const n = CASES.filter((c) => c.DispositionBand === b.name).length;
+      return `<div class="tile" style="--tile-accent: var(--${critVar(b.crit)})">
+          <span class="tile-count">${n}</span>
+          <span class="tile-name">${esc(b.name)}</span>
+          <span class="tile-note">${esc(b.note)}</span>
+        </div>`;
+    }).join("");
+  }
+
+  const critVar = (c) => ({ 1: "neg", 2: "crit", 3: "pos", 5: "info", 0: "none-fg" }[c] || "none-fg");
+
+  /* -------------------------------------------------------------- worklist */
+  function renderWorklist() {
+    document.getElementById("worklist-body").innerHTML = CASES.map((c, i) => `
+      <tr class="row" tabindex="0" role="button" data-i="${i}"
+          aria-selected="false"
+          aria-label="Case ${esc(c.CaseID)}, ${esc(c.BusinessPartnerName)}, ${esc(c.DispositionBand)}">
+        <td class="mono">${esc(c.CaseID)}</td>
+        <td>
+          <span class="cell-strong">${esc(c.BusinessPartnerName)}</span>
+          <span class="cell-sub">${esc(c.BPCountry)} · ${esc(c.BPEntityType)}</span>
+        </td>
+        <td>
+          <span class="cell-strong">${esc(c.SPLEntryName)}</span>
+          <span class="cell-sub">${esc(c.SPLListType)} · ${esc(c.SPLProgramme)}</span>
+        </td>
+        <td><span class="pill c${c.DispositionBandCriticality}">${esc(c.DispositionBand)}</span></td>
+        <td><span class="pill c${c.StatusCriticality}">${esc(c.Status)}</span></td>
+        <td><span class="pill c${c.PriorityCriticality}">${esc(c.Priority)}</span></td>
+        <td>${esc(c.MatchBasis)}</td>
+        <td class="num">${c.AgedDays}d</td>
+      </tr>`).join("");
+
+    document.querySelectorAll("tr.row").forEach((tr) => {
+      tr.addEventListener("click", () => select(+tr.dataset.i));
+      tr.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(+tr.dataset.i); }
+      });
+    });
+  }
+
+  /* ---------------------------------------------------------------- detail */
+  function renderDetail(c) {
+    document.getElementById("detail-case-id").textContent = c.CaseID;
+
+    const facts = [
+      ["Business partner", `${esc(c.BusinessPartnerName)}<br><span class="mono">${esc(c.BusinessPartnerID)}</span> · ${esc(c.BPEntityType)} · ${esc(c.BPCountry)}`],
+      ["Registration", `<span class="mono">${esc(c.BPRegistrationNo || "—")}</span>`],
+      ["SPL entry", `${esc(c.SPLEntryName)}<br><span class="mono">${esc(c.SPLEntryID)}</span> · ${esc(c.SPLEntityType)}`],
+      ["List / programme", `${esc(c.SPLListType)} · ${esc(c.SPLProgramme)}`],
+      // Match strength never stands alone: the basis is what makes the number
+      // meaningful, so the two are always shown together.
+      ["Match", `${c.MatchPercentage}% — ${esc(c.MatchBasis)}<br><span class="mono">${esc(c.ComparisonRule)}</span>`],
+      ["Disposition", `<span class="pill c${c.DispositionBandCriticality}">${esc(c.DispositionBand)}</span>`],
+      ["Intake", esc(c.IntakePath)],
+      ["Evidence", esc(c.EvidenceSummary)],
+    ];
+
+    if (c.DocumentNumber) {
+      facts.push(["Blocked document",
+        `${esc(c.DocumentType)} <span class="mono">${esc(c.DocumentNumber)}</span><br>` +
+        `${esc(c.OrderCurrency)} ${Number(c.OrderValue).toLocaleString("en-US")} → ${esc(c.ShipToCountry)}`]);
+    }
+    if (c.AssignedTo) facts.push(["Assigned to", esc(c.AssignedTo)]);
+
+    document.getElementById("detail-facts").innerHTML = facts.map(
+      ([k, v]) => `<div class="fact"><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join("");
+
+    const truncNote = c.RationaleTruncated
+      ? `<span class="truncation-note">Stored rationale is capped at 2,000 characters and ends mid-sentence here.</span>`
+      : "";
+
+    document.getElementById("detail-assessment").innerHTML = `
+      <div class="assessment-block">
+        <span class="label">Rationale</span>
+        <p>${esc(c.AgentRationale)}</p>
+        ${truncNote}
+      </div>
+      <div class="assessment-block change-mind">
+        <span class="label">What would change this assessment</span>
+        <p>${esc(c.WhatWouldChangeMyMind)}</p>
+      </div>`;
+
+    const items = EVIDENCE.filter((e) => e.CaseUUID === c.CaseUUID)
+      .sort((a, b) => a.SortOrder - b.SortOrder);
+
+    document.getElementById("ledger-body").innerHTML = items.map((e) => {
+      // A blank is ambiguous, so unavailable data is drawn as an explicit
+      // marker — missing must never look like a mismatch.
+      const val = (v) => e.DataAvailable
+        ? esc(v)
+        : `<span class="missing">${esc(v || "not available")}</span>`;
+      return `<tr class="${e.DataAvailable ? "" : "no-data"}">
+          <td><span class="pill c${e.CategoryCriticality}">${esc(e.Category)}</span></td>
+          <td class="cell-strong">${esc(e.DataElement)}</td>
+          <td class="ledger-values">${val(e.BPValue)} <span class="vs">vs</span> ${val(e.SPLValue)}</td>
+          <td>${esc(e.Assessment)}</td>
+        </tr>`;
+    }).join("");
+  }
+
+  function select(i) {
+    document.querySelectorAll("tr.row").forEach((tr) =>
+      tr.setAttribute("aria-selected", String(+tr.dataset.i === i)));
+    renderDetail(CASES[i]);
+  }
+
+  renderTiles();
+  renderWorklist();
+
+  // Opens on the clearest illustration of the everyday case: a block caused by
+  // one of the most common surnames in Germany.
+  const opening = Math.max(0, CASES.findIndex((c) => c.DispositionBand === "Propose Clear"));
+  select(opening);
+
+  const meta = CASES[0] || {};
+  document.getElementById("footer-meta").textContent =
+    [`model ${meta.ModelVersion || "n/a"}`, `prompt ${meta.PromptVersion}`,
+     `band logic ${meta.BandLogicVersion}`, `taxonomy ${meta.TaxonomyVersion}`]
+    .filter(Boolean).join("  ·  ");
+</script>

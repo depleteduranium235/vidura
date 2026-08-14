@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPL Adjudication Walkthrough</title>
+
+<!--
+  SOURCE FILE — edit this one.
+
+  Images are referenced from ./shots/, so opening this file directly in a browser
+  works and shows exactly what the shared version will show. Edit the copy, the
+  captions or the styling here, then run:
+
+      node demo/build_share_page.mjs
+
+  which inlines every ./shots/*.png as a data URI and writes
+  demo/fiori-app-walkthrough.html — one self-contained file, no dependencies,
+  safe to attach to an email or drop in SharePoint.
+
+  Regenerate the screenshots themselves with:
+      node demo/capture_demo.mjs
+-->
+
+<style>
+  /* SAP Horizon-derived palette: this is an SAP application, so the page speaks
+     the same colours the screenshots do. Neutrals carry a cool blue bias. */
+  :root {
+    color-scheme: light;
+    --ground: #f0f2f4; --surface: #ffffff; --sunk: #f7f8f9;
+    --line: #d6dce2; --line-soft: #e6eaee;
+    --ink: #17232f; --ink-muted: #55697c; --ink-faint: #7d8fa1;
+    --accent: #0064d9; --accent-soft: #e8f1fd; --crit: #b04a00;
+    --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-data: "Cascadia Mono", Consolas, ui-monospace, monospace;
+    --radius: 4px;
+  }
+
+  /* Dark mode: tokens only, so no component style is defined solely in here. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #1a2028; --surface: #232a33; --sunk: #1f262e;
+      --line: #3a4553; --line-soft: #2e3742;
+      --ink: #e7ecf1; --ink-muted: #a6b4c2; --ink-faint: #7f8fa0;
+      --accent: #7cb4f8; --accent-soft: #1c3350; --crit: #ffb166;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #1a2028; --surface: #232a33; --sunk: #1f262e;
+    --line: #3a4553; --line-soft: #2e3742;
+    --ink: #e7ecf1; --ink-muted: #a6b4c2; --ink-faint: #7f8fa0;
+    --accent: #7cb4f8; --accent-soft: #1c3350; --crit: #ffb166;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family: var(--font-ui); font-size: 1rem; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 40px 20px 72px;
+          display: flex; flex-direction: column; gap: 36px; }
+  h1, h2 { margin: 0; text-wrap: balance; letter-spacing: -0.015em; }
+  h1 { font-size: 2.1rem; font-weight: 650; line-height: 1.15; }
+  h2 { font-size: 1.2rem; font-weight: 640; }
+  h3 { margin: 0; font-size: .9375rem; font-weight: 640; }
+  p { margin: 0; }
+  .prose { max-width: 68ch; color: var(--ink-muted); }
+  .eyebrow { font-size: .72rem; font-weight: 620; letter-spacing: .09em;
+             text-transform: uppercase; color: var(--ink-faint); }
+
+  header { display: flex; flex-direction: column; gap: 14px; }
+  .title-row { display: flex; align-items: baseline; gap: 13px; flex-wrap: wrap; }
+  .chip { font-family: var(--font-data); font-size: .75rem; font-weight: 600;
+          padding: 3px 8px; border-radius: var(--radius);
+          background: var(--accent-soft); color: var(--accent); }
+  .notice { display: flex; padding: 13px 15px; background: var(--surface);
+            border: 1px solid var(--line); border-left: 3px solid var(--crit);
+            border-radius: var(--radius); font-size: .875rem;
+            color: var(--ink-muted); max-width: 80ch; }
+  .notice strong { color: var(--ink); font-weight: 640; }
+
+  figure { margin: 0; display: flex; flex-direction: column; gap: 14px; }
+  figcaption { display: flex; flex-direction: column; gap: 6px; max-width: 76ch; }
+  figcaption p { color: var(--ink-muted); font-size: .9375rem; }
+  .shot { background: var(--surface); border: 1px solid var(--line);
+          border-radius: var(--radius); padding: 6px;
+          box-shadow: 0 1px 2px rgba(23,35,47,.08), 0 6px 18px rgba(23,35,47,.07);
+          overflow-x: auto; }
+  .shot img { display: block; width: 100%; height: auto; max-width: 100%;
+              border-radius: 2px; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+           gap: 1px; background: var(--line-soft); border: 1px solid var(--line);
+           border-radius: var(--radius); overflow: hidden; }
+  .step { background: var(--surface); padding: 16px;
+          display: flex; flex-direction: column; gap: 6px; }
+  .step .n { font-family: var(--font-data); font-size: .75rem; font-weight: 700;
+             color: var(--accent); }
+  .step p { font-size: .85rem; color: var(--ink-muted); }
+
+  footer { border-top: 1px solid var(--line); padding-top: 22px;
+           display: flex; flex-direction: column; gap: 12px;
+           font-size: .9rem; color: var(--ink-muted); }
+  footer ul { margin: 0; padding-left: 20px; display: flex;
+              flex-direction: column; gap: 7px; }
+  footer .meta { font-family: var(--font-data); font-size: .75rem;
+                 color: var(--ink-faint); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div class="title-row">
+      <h1>SPL Hit Adjudication</h1>
+      <span class="chip">Vidura</span>
+    </div>
+    <p class="prose">
+      SAP GTS blocks a business partner whenever its name resembles an entry on a
+      sanctioned party list. Someone then has to decide whether it really is that
+      party. Most are not &mdash; but each one still has to be read, reasoned about
+      and documented, and the documentation is what an auditor asks for. This agent
+      does the reading and lays out the evidence; a fixed rule, not the model, sets
+      the disposition.
+    </p>
+    <div class="notice">
+      <div>
+        <strong>These are screenshots of the working application.</strong>
+        It runs on demo data &mdash; five illustrative cases with invented business
+        partners and SPL entries, not real screening results. The reasoning shown is
+        genuine output from the adjudication pipeline. The app currently runs against
+        a local mock OData service; it is not yet deployed to SAP and not connected
+        to a GTS system.
+      </div>
+    </div>
+  </header>
+
+  <figure>
+    <figcaption>
+      <span class="eyebrow">Screen 1 of 5</span>
+      <h2>The worklist</h2>
+      <p>
+        Every blocked partner-to-entry pair the agent has assessed, with the
+        disposition it proposes, the status and the priority. The tabs across the top
+        are saved views &mdash; All Cases, Escalated, Ready to Clear, High Value at
+        Risk, Aged Over 5 Days &mdash; so a reviewer opens straight into the queue
+        they work from.
+      </p>
+    </figcaption>
+    <div class="shot">
+      <img src="shots/01-worklist.png" alt="The worklist" loading="lazy">
+    </div>
+  </figure>
+
+  <figure>
+    <figcaption>
+      <span class="eyebrow">Screen 2 of 5</span>
+      <h2>The everyday case</h2>
+      <p>
+        Schmidt &amp; Weber GmbH was blocked against an individual named SCHMIDT, one
+        of the most common surnames in Germany. This is the bulk of the real workload:
+        obvious false positives that still have to be read, reasoned about and
+        documented. The agent proposes clearing it and writes down why, so the
+        reviewer confirms a decision instead of reconstructing one.
+      </p>
+    </figcaption>
+    <div class="shot">
+      <img src="shots/04-case-propose-clear.png" alt="The everyday case" loading="lazy">
+    </div>
+  </figure>
+
+  <figure>
+    <figcaption>
+      <span class="eyebrow">Screen 3 of 5</span>
+      <h2>The evidence ledger</h2>
+      <p>
+        The heart of it. Every data element compared, each classified on a fixed scale
+        from dispositive exclusion through to dispositive confirmation, each with a
+        written justification. Entity type is dispositive here: the listing is a
+        natural person, the partner is a registered company. Note the rows where data
+        is not available &mdash; those are recorded as neutral, never as evidence of
+        innocence.
+      </p>
+    </figcaption>
+    <div class="shot">
+      <img src="shots/05-evidence-ledger-clear.png" alt="The evidence ledger" loading="lazy">
+    </div>
+  </figure>
+
+  <figure>
+    <figcaption>
+      <span class="eyebrow">Screen 4 of 5</span>
+      <h2>When it should not be cleared</h2>
+      <p>
+        Petrochemical Supplies FZE against PETRO SUPPLIES TRADING FZE &mdash; shared
+        distinctive name tokens, the same free zone, the same building, and a blocked
+        order for petrochemical precursors shipping to Iran. The agent escalates and
+        says what it would need to change its mind.
+      </p>
+    </figcaption>
+    <div class="shot">
+      <img src="shots/02-case-escalate.png" alt="When it should not be cleared" loading="lazy">
+    </div>
+  </figure>
+
+  <figure>
+    <figcaption>
+      <span class="eyebrow">Screen 5 of 5</span>
+      <h2>The ledger behind an escalation</h2>
+      <p>
+        Nine corroborating findings against one weak discriminator. The disposition is
+        not the model's opinion &mdash; it falls out of these rows by fixed rules,
+        where one dispositive finding outweighs any number of weak ones in the other
+        direction.
+      </p>
+    </figcaption>
+    <div class="shot">
+      <img src="shots/03-evidence-ledger.png" alt="The ledger behind an escalation" loading="lazy">
+    </div>
+  </figure>
+
+  <section>
+    <h2 style="margin-bottom:14px">How a case is produced</h2>
+    <div class="steps">
+      <div class="step">
+        <span class="n">01</span>
+        <h3>GTS is read, never written</h3>
+        <p>
+          The blocked partner, its addresses and every matched SPL entry are read over
+          OData. One case per partner-address-to-entry pair, so each identity question
+          is judged on its own. Releasing a block stays with a named human in their own
+          session.
+        </p>
+      </div>
+      <div class="step">
+        <span class="n">02</span>
+        <h3>The model fills the ledger</h3>
+        <p>
+          It compares the two records element by element and classifies each finding,
+          with a justification. Missing data is recorded as neutral &mdash; absence of
+          evidence is never treated as evidence of absence.
+        </p>
+      </div>
+      <div class="step">
+        <span class="n">03</span>
+        <h3>A fixed rule sets the band</h3>
+        <p>
+          The disposition follows from the ledger by deterministic, testable logic: one
+          dispositive finding outweighs any number of weak ones opposing it. The model
+          never emits a score, and no number is ever the reason for a decision.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>Where this stands</strong></p>
+    <ul>
+      <li>
+        The UI is Fiori Elements on SAPUI5 1.120 &mdash; a List Report and Object Page
+        generated from OData annotations, not hand-built views.
+      </li>
+      <li>
+        The reasoning has been run against live GTS data in the AGP sandbox and the
+        read path works end to end. But AGP's partner records carry almost none of the
+        discriminators real adjudication needs, so quality still has to be proved on a
+        client extract.
+      </li>
+      <li>
+        Auto-clear exists in the design but is not reachable yet: it requires a
+        matching precedent, and the precedent store is still a stub.
+      </li>
+    </ul>
+    <p class="meta">
+      SAPUI5 1.120.0 &middot; Fiori Elements List Report + Object Page &middot;
+      mock OData V4 service &middot; captured 2026-08-14
+    </p>
+  </footer>
+
+</div>
+
+</body>
+</html>

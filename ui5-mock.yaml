@@ -22,6 +22,9 @@ server:
             metadataPath: ./webapp/localService/metadata.xml
             mockdataPath: ./webapp/localService/mockdata
             generateMockData: true
-        annotations:
-          - localPath: ./webapp/annotations/annotation.xml
-            urlPath: /sap/opu/odata4/sap/zspl_adjudication/srvd_a2x/zpwc/gts/spl_adjudication/0001/annotation.xml
+        # No `annotations:` block on purpose. The UI annotations live inside
+        # localService/metadata.xml, which the mockserver already serves as
+        # $metadata, and manifest.json declares no separate annotation source.
+        # Mounting one under the service urlPath made the mockserver route
+        # /annotation.xml into its OData handler looking for an entity set of
+        # that name, which returned HTTP 500 on every request.

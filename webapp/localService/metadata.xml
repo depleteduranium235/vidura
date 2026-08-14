@@ -75,6 +75,35 @@
         <NavigationProperty Name="_Case" Type="zpwc.gts.spl_adjudication.AdjudicationCaseType" Partner="_EvidenceItems"/>
       </EntityType>
 
+      <!-- Bound actions: reviewer decisions.
+           In production these hot-wire to Manage Blocked Partners (F4542A) via
+           deep link or RAP delegation. The goal is a one-stop solution — the
+           reviewer reads the evidence, decides, and the release/block/escalation
+           executes without switching to another app.
+
+           Each action takes a comment (optional free text the reviewer adds to
+           document their reasoning beyond what the agent already wrote) and
+           returns the updated case. -->
+
+      <Action Name="confirmRelease" IsBound="true">
+        <Parameter Name="in" Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+        <Parameter Name="Comment" Type="Edm.String" MaxLength="2000" Nullable="true"/>
+        <ReturnType Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+      </Action>
+
+      <Action Name="rejectRelease" IsBound="true">
+        <Parameter Name="in" Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+        <Parameter Name="Comment" Type="Edm.String" MaxLength="2000" Nullable="true"/>
+        <ReturnType Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+      </Action>
+
+      <Action Name="escalateCase" IsBound="true">
+        <Parameter Name="in" Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+        <Parameter Name="Comment" Type="Edm.String" MaxLength="2000" Nullable="true"/>
+        <Parameter Name="EscalateTo" Type="Edm.String" MaxLength="80" Nullable="true"/>
+        <ReturnType Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+      </Action>
+
       <EntityContainer Name="EntityContainer">
         <EntitySet Name="AdjudicationCase" EntityType="zpwc.gts.spl_adjudication.AdjudicationCaseType">
           <NavigationPropertyBinding Path="_EvidenceItems" Target="EvidenceItem"/>
@@ -102,6 +131,33 @@
               </Record>
             </PropertyValue>
           </Record>
+        </Annotation>
+
+        <!-- Object Page header actions.
+             These appear as buttons in the Object Page header bar. In production
+             they hot-wire to Manage Blocked Partners (F4542A):
+               confirmRelease -> execute the release under the reviewer's user ID
+               rejectRelease  -> keep the block, document why
+               escalateCase   -> assign to a senior reviewer
+
+             The comment parameter opens as a dialog field so the reviewer can
+             add free text before executing. -->
+        <Annotation Term="com.sap.vocabularies.UI.v1.Identification">
+          <Collection>
+            <Record Type="com.sap.vocabularies.UI.v1.DataFieldForAction">
+              <PropertyValue Property="Label" String="Confirm Release"/>
+              <PropertyValue Property="Action" String="zpwc.gts.spl_adjudication.confirmRelease"/>
+              <PropertyValue Property="Criticality" Path="StatusCriticality"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataFieldForAction">
+              <PropertyValue Property="Label" String="Reject"/>
+              <PropertyValue Property="Action" String="zpwc.gts.spl_adjudication.rejectRelease"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataFieldForAction">
+              <PropertyValue Property="Label" String="Escalate"/>
+              <PropertyValue Property="Action" String="zpwc.gts.spl_adjudication.escalateCase"/>
+            </Record>
+          </Collection>
         </Annotation>
 
         <Annotation Term="com.sap.vocabularies.UI.v1.SelectionFields">
@@ -200,6 +256,21 @@
               <Collection>
                 <AnnotationPath>@com.sap.vocabularies.UI.v1.LineItem</AnnotationPath>
               </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <!-- Selection Variant: All Cases (unqualified).
+             manifest.json's first views.paths entry points at the unqualified
+             SelectionVariant. Without this annotation that path resolves to
+             nothing, sap.fe silently drops the tab, and the worklist opens on
+             "Escalated" — showing only the escalated subset with no way to
+             reach the full list. Empty SelectOptions means "no filter". -->
+        <Annotation Term="com.sap.vocabularies.UI.v1.SelectionVariant">
+          <Record Type="com.sap.vocabularies.UI.v1.SelectionVariantType">
+            <PropertyValue Property="Text" String="All Cases"/>
+            <PropertyValue Property="SelectOptions">
+              <Collection/>
             </PropertyValue>
           </Record>
         </Annotation>
@@ -353,15 +424,30 @@
         <!-- Object Page Sections -->
         <Annotation Term="com.sap.vocabularies.UI.v1.Facets">
           <Collection>
-            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+            <!-- Agent Assessment is a CollectionFacet so it contains both the
+                 per-field evidence breakdown (the table) and the summary fields
+                 in one section, without requiring a separate tab click. Each row
+                 in the table is one data element (Entity Type, Country, Name
+                 Rarity...) with its own classification and assessment — matching
+                 the previous design where the rationale was broken out per field
+                 rather than presented as a single blob. -->
+            <Record Type="com.sap.vocabularies.UI.v1.CollectionFacet">
               <PropertyValue Property="ID" String="AgentAssessment"/>
               <PropertyValue Property="Label" String="Agent Assessment"/>
-              <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.FieldGroup#AgentAssessment"/>
-            </Record>
-            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
-              <PropertyValue Property="ID" String="EvidenceLedger"/>
-              <PropertyValue Property="Label" String="Evidence Ledger"/>
-              <PropertyValue Property="Target" AnnotationPath="_EvidenceItems/@com.sap.vocabularies.UI.v1.LineItem"/>
+              <PropertyValue Property="Facets">
+                <Collection>
+                  <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+                    <PropertyValue Property="ID" String="EvidenceBreakdown"/>
+                    <PropertyValue Property="Label" String="Evidence Breakdown"/>
+                    <PropertyValue Property="Target" AnnotationPath="_EvidenceItems/@com.sap.vocabularies.UI.v1.LineItem"/>
+                  </Record>
+                  <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+                    <PropertyValue Property="ID" String="AssessmentSummary"/>
+                    <PropertyValue Property="Label" String="Summary"/>
+                    <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.FieldGroup#AgentAssessment"/>
+                  </Record>
+                </Collection>
+              </PropertyValue>
             </Record>
             <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
               <PropertyValue Property="ID" String="HitDetails"/>
@@ -392,14 +478,15 @@
         </Annotation>
 
         <!-- Field Groups -->
+        <!-- The per-field breakdown lives in the evidence table above; these
+             fields are the summary that sits below it. AgentRationale is
+             deliberately excluded — it was a concatenation of all per-item
+             assessments into one wall of text, which is less readable than the
+             table that shows each one in its own row with its own label. -->
         <Annotation Term="com.sap.vocabularies.UI.v1.FieldGroup" Qualifier="AgentAssessment">
           <Record Type="com.sap.vocabularies.UI.v1.FieldGroupType">
             <PropertyValue Property="Data">
               <Collection>
-                <Record Type="com.sap.vocabularies.UI.v1.DataField">
-                  <PropertyValue Property="Value" Path="AgentRationale"/>
-                  <PropertyValue Property="Label" String="Rationale"/>
-                </Record>
                 <Record Type="com.sap.vocabularies.UI.v1.DataField">
                   <PropertyValue Property="Value" Path="WhatWouldChangeMyMind"/>
                   <PropertyValue Property="Label" String="What Would Change This Assessment"/>
@@ -407,6 +494,11 @@
                 <Record Type="com.sap.vocabularies.UI.v1.DataField">
                   <PropertyValue Property="Value" Path="EvidenceSummary"/>
                   <PropertyValue Property="Label" String="Evidence Summary"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="DispositionBand"/>
+                  <PropertyValue Property="Label" String="Disposition"/>
+                  <PropertyValue Property="Criticality" Path="DispositionBandCriticality"/>
                 </Record>
               </Collection>
             </PropertyValue>
@@ -566,6 +658,54 @@
           </Record>
         </Annotation>
 
+      </Annotations>
+
+      <!-- Property labels.
+           UI.LineItem carries its own inline Label per column, so the table
+           headers read correctly without these. The filter bar does not — it
+           takes its labels from Common.Label on the property itself, and with
+           none defined it falls back to the raw technical name ("IntakePath:",
+           "SPLListType:", "BPCountry:"). These cover every property in
+           UI.SelectionFields. -->
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType/DispositionBand">
+        <Annotation Term="com.sap.vocabularies.Common.v1.Label" String="Disposition"/>
+      </Annotations>
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType/Status">
+        <Annotation Term="com.sap.vocabularies.Common.v1.Label" String="Status"/>
+      </Annotations>
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType/Priority">
+        <Annotation Term="com.sap.vocabularies.Common.v1.Label" String="Priority"/>
+      </Annotations>
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType/IntakePath">
+        <Annotation Term="com.sap.vocabularies.Common.v1.Label" String="Intake Path"/>
+      </Annotations>
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType/AssignedTo">
+        <Annotation Term="com.sap.vocabularies.Common.v1.Label" String="Assigned To"/>
+      </Annotations>
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType/SPLListType">
+        <Annotation Term="com.sap.vocabularies.Common.v1.Label" String="List Type"/>
+      </Annotations>
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType/BPCountry">
+        <Annotation Term="com.sap.vocabularies.Common.v1.Label" String="Country"/>
+      </Annotations>
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType/AgedDays">
+        <Annotation Term="com.sap.vocabularies.Common.v1.Label" String="Age (Days)"/>
+      </Annotations>
+
+      <!-- Long-form text.
+           Without UI.MultiLineText these render as single-line fields sized to
+           one form column, so a 2,000-character rationale becomes a very tall
+           ribbon of text a few words wide while the rest of the page sits
+           empty. The rationale is the point of the whole application, so it
+           gets the multi-line treatment. -->
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType/AgentRationale">
+        <Annotation Term="com.sap.vocabularies.UI.v1.MultiLineText"/>
+      </Annotations>
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType/WhatWouldChangeMyMind">
+        <Annotation Term="com.sap.vocabularies.UI.v1.MultiLineText"/>
+      </Annotations>
+      <Annotations Target="zpwc.gts.spl_adjudication.EvidenceItemType/Assessment">
+        <Annotation Term="com.sap.vocabularies.UI.v1.MultiLineText"/>
       </Annotations>
 
       <!-- Evidence Ledger annotations -->

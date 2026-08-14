@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPL Hit Adjudication</title>
+
+<style>
+  html, body, #content, #container-uiarea { height: 100%; margin: 0; padding: 0; }
+  [id*="appRootView"] { height: 100vh !important; }
+  [id*="appContent"] { height: 100% !important; }
+
+  /* Shown until UI5 takes over, and left visible if the environment can't run
+     the demo — a blank page would give no clue why. */
+  #boot {
+    position: fixed; inset: 0; display: flex; align-items: center;
+    justify-content: center; padding: 32px;
+    background: #f0f2f4; color: #17232f;
+    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  }
+  #boot .card {
+    max-width: 60ch; background: #fff; border: 1px solid #d6dce2;
+    border-radius: 4px; padding: 24px 26px; line-height: 1.6;
+    box-shadow: 0 1px 2px rgba(23,35,47,.08), 0 6px 18px rgba(23,35,47,.07);
+  }
+  #boot h1 { margin: 0 0 6px; font-size: 1.25rem; font-weight: 640; }
+  #boot p { margin: 0 0 10px; color: #55697c; font-size: .9375rem; }
+  #boot code {
+    font-family: Consolas, "Cascadia Mono", ui-monospace, monospace;
+    background: #f0f2f4; padding: 1px 5px; border-radius: 3px; font-size: .875rem;
+  }
+  #boot .err { color: #a80000; font-weight: 600; }
+  #boot .spinner {
+    width: 15px; height: 15px; border: 2px solid #d6dce2; border-top-color: #0064d9;
+    border-radius: 50%; display: inline-block; vertical-align: -2px;
+    animation: spin .8s linear infinite; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { #boot .spinner { animation: none; } }
+</style>
+</head>
+
+<body class="sapUiBody sapUiSizeCompact" id="content">
+
+<div id="boot">
+  <div class="card">
+    <h1 id="boot-title"><span class="spinner"></span>Starting the demo</h1>
+    <p id="boot-msg">Loading SAPUI5 and starting the in-browser mock service&hellip;</p>
+  </div>
+</div>
+
+<div data-sap-ui-component
+     data-name="zpwc.gts.spladjudication"
+     data-id="container"
+     data-settings='{"id":"zpwc.gts.spladjudication"}'
+     data-handle-validation="true"
+     style="height:100%"></div>
+
+<script>
+/**
+ * The demo has no backend. A Service Worker answers the OData V4 requests, so
+ * it must be in control of the page *before* UI5 boots — otherwise the first
+ * $metadata request goes to the network and the app starts with no model.
+ *
+ * Order: register the worker, wait until it controls this page (reloading once
+ * on a cold first visit, which is normal), only then load UI5.
+ */
+(function () {
+  "use strict";
+
+  var UI5 = "https://ui5.sap.com/1.120.0/resources/sap-ui-core.js";
+  var titleEl = document.getElementById("boot-title");
+  var msgEl = document.getElementById("boot-msg");
+
+  function fail(heading, htmlMessage) {
+    titleEl.innerHTML = '<span class="err">' + heading + "</span>";
+    msgEl.innerHTML = htmlMessage;
+  }
+
+  if (!("serviceWorker" in navigator)) {
+    fail("This browser can't run the demo",
+      "It has no Service Worker support, which the demo uses instead of a server. " +
+      "Please try Edge, Chrome, Firefox or Safari.");
+    return;
+  }
+
+  // Service Workers require a secure context: https, or http on localhost.
+  // Opening index.html straight off the disk (file://) can never work.
+  if (location.protocol === "file:") {
+    fail("Open this over http, not from the file system",
+      "Service Workers are blocked on <code>file://</code>. From this folder run " +
+      "<code>npx serve .</code> or <code>python -m http.server 8080</code>, then " +
+      "open <code>http://localhost:8080</code>. Hosting it on any https site also works.");
+    return;
+  }
+  if (!window.isSecureContext) {
+    fail("This page needs a secure context",
+      "Service Workers only run on <code>https://</code> or <code>http://localhost</code>. " +
+      "Serve the folder over https and reload.");
+    return;
+  }
+
+  function bootUI5() {
+    msgEl.textContent = "Mock service ready. Loading the application…";
+    var s = document.createElement("script");
+    s.id = "sap-ui-bootstrap";
+    s.src = UI5;
+    s.setAttribute("data-sap-ui-theme", "sap_horizon");
+    s.setAttribute("data-sap-ui-resourceroots",
+      '{"zpwc.gts.spladjudication": "./"}');
+    s.setAttribute("data-sap-ui-compatVersion", "edge");
+    s.setAttribute("data-sap-ui-async", "true");
+    s.setAttribute("data-sap-ui-oninit", "module:sap/ui/core/ComponentSupport");
+    s.setAttribute("data-sap-ui-frameOptions", "trusted");
+    s.onerror = function () {
+      fail("Couldn't load SAPUI5",
+        "The runtime is loaded from <code>ui5.sap.com</code> and that request failed — " +
+        "usually no internet access, or a proxy blocking it. The app files themselves " +
+        "are fine; only the SAPUI5 runtime is remote.");
+    };
+    document.head.appendChild(s);
+
+    // Hide the boot card once UI5 has painted something.
+    var tries = 0;
+    var poll = setInterval(function () {
+      if (document.querySelector(".sapMShell, .sapUiView, [role='columnheader']") || ++tries > 120) {
+        var boot = document.getElementById("boot");
+        if (boot && document.querySelector(".sapMShell, .sapUiView, [role='columnheader']")) {
+          boot.remove();
+        }
+        clearInterval(poll);
+      }
+    }, 500);
+  }
+
+  navigator.serviceWorker.register("./sw.js", { scope: "./" }).then(function (reg) {
+    if (navigator.serviceWorker.controller) return bootUI5();
+
+    // First visit: the worker is installing and does not control this page yet.
+    // It calls clients.claim() on activate, so wait for that rather than reloading.
+    var done = false;
+    function go() { if (!done) { done = true; bootUI5(); } }
+
+    navigator.serviceWorker.addEventListener("controllerchange", go);
+    navigator.serviceWorker.ready.then(function () {
+      // Give clients.claim() a moment to land, then proceed either way.
+      setTimeout(function () {
+        if (navigator.serviceWorker.controller) go();
+        else location.reload();
+      }, 600);
+    });
+    if (reg.installing) {
+      reg.installing.addEventListener("statechange", function () {
+        if (this.state === "activated" && navigator.serviceWorker.controller) go();
+      });
+    }
+  }).catch(function (err) {
+    fail("Couldn't start the mock service",
+      "Registering the Service Worker failed: <code>" + String(err) +
+      "</code><br>If this folder is on a host that blocks Service Workers, the demo " +
+      "cannot run there.");
+  });
+})();
+</script>
+</body>
+</html>

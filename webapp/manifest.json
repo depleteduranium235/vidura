@@ -76,7 +76,9 @@
       "i18n": {
         "type": "sap.ui.model.resource.ResourceModel",
         "settings": {
-          "bundleName": "zpwc.gts.spladjudication.i18n.i18n"
+          "bundleName": "zpwc.gts.spladjudication.i18n.i18n",
+          "supportedLocales": [""],
+          "fallbackLocale": ""
         }
       },
       "": {
@@ -93,16 +95,32 @@
       "routes": [
         {
           "pattern": ":?query:",
+          "name": "Dashboard",
+          "target": "Dashboard"
+        },
+        {
+          "pattern": "cases:?query:",
           "name": "AdjudicationCaseList",
           "target": "AdjudicationCaseList"
         },
         {
-          "pattern": "AdjudicationCase({key}):?query:",
+          "pattern": "cases/AdjudicationCase({key}):?query:",
           "name": "AdjudicationCaseObjectPage",
           "target": "AdjudicationCaseObjectPage"
         }
       ],
       "targets": {
+        "Dashboard": {
+          "type": "Component",
+          "id": "Dashboard",
+          "name": "sap.fe.core.fpm",
+          "options": {
+            "settings": {
+              "viewName": "zpwc.gts.spladjudication.ext.dashboard.Dashboard",
+              "entitySet": "AdjudicationCase"
+            }
+          }
+        },
         "AdjudicationCaseList": {
           "type": "Component",
           "id": "AdjudicationCaseList",

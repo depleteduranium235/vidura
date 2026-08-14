@@ -1,0 +1,397 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:f="sap.f"
+  xmlns:core="sap.ui.core"
+  xmlns:mc="sap.suite.ui.microchart"
+  controllerName="zpwc.gts.spladjudication.ext.dashboard.Dashboard"
+  height="100%">
+
+  <App>
+    <Page
+      showHeader="true"
+      showNavButton="false"
+      class="sapUiResponsivePadding--header sapUiResponsivePadding--content">
+
+      <customHeader>
+        <Bar>
+          <contentMiddle>
+            <Title text="SPL Hit Adjudication" level="H3"/>
+          </contentMiddle>
+          <contentRight>
+            <Button
+              text="View All Cases"
+              type="Emphasized"
+              icon="sap-icon://list"
+              press=".onNavigateToList"/>
+          </contentRight>
+        </Bar>
+      </customHeader>
+
+      <content>
+        <VBox class="sapUiSmallMargin">
+
+          <!-- ═══════════════════ SHARED SUMMARY BAR ═══════════════════ -->
+          <HBox
+            class="sapUiTinyMarginBottom"
+            wrap="Wrap"
+            justifyContent="Start"
+            alignItems="Stretch">
+
+            <GenericTile
+              header="Total Queue"
+              subheader="Unresolved cases"
+              class="sapUiTinyMarginEnd sapUiTinyMarginBottom"
+              frameType="OneByOne"
+              press=".onNavigateToList">
+              <TileContent>
+                <NumericContent
+                  value="{dashboard>/totalQueue}"
+                  valueColor="Neutral"
+                  indicator="None"
+                  withMargin="false"/>
+              </TileContent>
+            </GenericTile>
+
+            <GenericTile
+              header="Escalated"
+              subheader="Needs senior attention"
+              class="sapUiTinyMarginEnd sapUiTinyMarginBottom"
+              frameType="OneByOne"
+              press=".onTilePress">
+              <customData>
+                <core:CustomData key="filter" value="DispositionBand=Escalate"/>
+              </customData>
+              <TileContent>
+                <NumericContent
+                  value="{dashboard>/escalated}"
+                  valueColor="Error"
+                  indicator="None"
+                  withMargin="false"/>
+              </TileContent>
+            </GenericTile>
+
+            <GenericTile
+              header="Pending Review"
+              subheader="Unassigned, new"
+              class="sapUiTinyMarginEnd sapUiTinyMarginBottom"
+              frameType="OneByOne"
+              press=".onTilePress">
+              <customData>
+                <core:CustomData key="filter" value="Status=New"/>
+              </customData>
+              <TileContent>
+                <NumericContent
+                  value="{dashboard>/pendingReview}"
+                  valueColor="Critical"
+                  indicator="None"
+                  withMargin="false"/>
+              </TileContent>
+            </GenericTile>
+
+            <GenericTile
+              header="Cleared Today"
+              subheader="Decisions made"
+              class="sapUiTinyMarginEnd sapUiTinyMarginBottom"
+              frameType="OneByOne"
+              press=".onTilePress">
+              <customData>
+                <core:CustomData key="filter" value="HumanDecision=Confirmed"/>
+              </customData>
+              <TileContent>
+                <NumericContent
+                  value="{dashboard>/clearedToday}"
+                  valueColor="Good"
+                  indicator="None"
+                  withMargin="false"/>
+              </TileContent>
+            </GenericTile>
+
+            <GenericTile
+              header="Safety Gate"
+              subheader="§8 compliance"
+              class="sapUiTinyMarginEnd sapUiTinyMarginBottom"
+              frameType="OneByOne">
+              <TileContent>
+                <NumericContent
+                  value="✓"
+                  valueColor="Good"
+                  scale="PASS"
+                  withMargin="false"/>
+              </TileContent>
+            </GenericTile>
+
+          </HBox>
+
+          <!-- ═══════════════════ TABBED CONTENT ═══════════════════ -->
+          <IconTabBar
+            id="pathTabs"
+            selectedKey="bp"
+            select=".onTabSelect"
+            class="sapUiNoContentPadding"
+            stretchContentHeight="true"
+            applyContentPadding="true">
+
+            <!-- ─────────── BP ADJUDICATION TAB ─────────── -->
+            <items>
+              <IconTabFilter key="bp" text="BP Adjudication" count="{dashboard>/bpCount}" icon="sap-icon://business-card">
+
+                <VBox class="sapUiSmallMarginTop">
+                  <!-- Row 1: Disposition donut + Programme bar -->
+                  <HBox wrap="Wrap" alignItems="Stretch">
+
+                    <VBox class="sapUiSmallMarginEnd sapUiSmallMarginBottom" width="320px">
+                      <ObjectStatus text="Queue by Disposition" class="sapUiTinyMarginBottom"/>
+                      <mc:StackedBarMicroChart
+                        id="bpDispositionChart"
+                        height="2.5rem"
+                        precision="0"
+                        press=".onNavigateToList">
+                        <mc:bars>
+                          <mc:StackedBarMicroChartBar value="{dashboard>/bp/escalateCount}" valueColor="Error" displayValue="{dashboard>/bp/escalateCount} Escalate"/>
+                          <mc:StackedBarMicroChartBar value="{dashboard>/bp/reviewCount}" valueColor="Critical" displayValue="{dashboard>/bp/reviewCount} Review"/>
+                          <mc:StackedBarMicroChartBar value="{dashboard>/bp/propClearCount}" valueColor="Good" displayValue="{dashboard>/bp/propClearCount} Propose Clear"/>
+                        </mc:bars>
+                      </mc:StackedBarMicroChart>
+                    </VBox>
+
+                    <VBox class="sapUiSmallMarginEnd sapUiSmallMarginBottom" width="360px">
+                      <ObjectStatus text="By Sanctions Programme" class="sapUiTinyMarginBottom"/>
+                      <List
+                        id="bpProgrammeList"
+                        items="{dashboard>/bp/programmes}"
+                        showNoData="false">
+                        <StandardListItem
+                          title="{dashboard>name}"
+                          counter="{dashboard>count}"
+                          type="Active"
+                          press=".onProgrammePress"/>
+                      </List>
+                    </VBox>
+
+                    <VBox class="sapUiSmallMarginBottom" width="300px">
+                      <ObjectStatus text="By Country" class="sapUiTinyMarginBottom"/>
+                      <List
+                        id="bpCountryList"
+                        items="{dashboard>/bp/countries}"
+                        showNoData="false">
+                        <StandardListItem
+                          title="{dashboard>name}"
+                          counter="{dashboard>count}"
+                          type="Active"
+                          press=".onCountryPress"/>
+                      </List>
+                    </VBox>
+
+                  </HBox>
+
+                  <!-- Row 2: Age + Unassigned + Recent -->
+                  <HBox wrap="Wrap" alignItems="Stretch">
+
+                    <VBox class="sapUiSmallMarginEnd sapUiSmallMarginBottom" width="280px">
+                      <ObjectStatus text="Age Distribution" class="sapUiTinyMarginBottom"/>
+                      <mc:StackedBarMicroChart
+                        id="bpAgeChart"
+                        height="2.5rem"
+                        precision="0">
+                        <mc:bars>
+                          <mc:StackedBarMicroChartBar value="{dashboard>/bp/age/fresh}" valueColor="Good" displayValue="{dashboard>/bp/age/fresh} ≤1d"/>
+                          <mc:StackedBarMicroChartBar value="{dashboard>/bp/age/normal}" valueColor="Neutral" displayValue="{dashboard>/bp/age/normal} 2-3d"/>
+                          <mc:StackedBarMicroChartBar value="{dashboard>/bp/age/aging}" valueColor="Critical" displayValue="{dashboard>/bp/age/aging} 4-7d"/>
+                          <mc:StackedBarMicroChartBar value="{dashboard>/bp/age/old}" valueColor="Error" displayValue="{dashboard>/bp/age/old} >7d"/>
+                        </mc:bars>
+                      </mc:StackedBarMicroChart>
+                    </VBox>
+
+                    <GenericTile
+                      header="Unassigned"
+                      subheader="No reviewer assigned"
+                      class="sapUiSmallMarginEnd sapUiSmallMarginBottom"
+                      frameType="OneByOne"
+                      press=".onTilePress">
+                      <customData>
+                        <core:CustomData key="filter" value="AssignedTo="/>
+                      </customData>
+                      <TileContent>
+                        <NumericContent
+                          value="{dashboard>/bp/unassigned}"
+                          valueColor="{= ${dashboard>/bp/unassigned} > 3 ? 'Error' : 'Critical'}"
+                          withMargin="false"/>
+                      </TileContent>
+                    </GenericTile>
+
+                  </HBox>
+
+                  <!-- Row 3: Recent cases -->
+                  <VBox class="sapUiSmallMarginTop">
+                    <ObjectStatus text="Most Recent BP Cases" class="sapUiTinyMarginBottom"/>
+                    <List
+                      id="bpRecentList"
+                      items="{dashboard>/bp/recent}"
+                      showNoData="false">
+                      <ObjectListItem
+                        title="{dashboard>BusinessPartnerName}"
+                        number="{dashboard>AgedDays}"
+                        numberUnit="days"
+                        type="Active"
+                        press=".onCasePress">
+                        <attributes>
+                          <ObjectAttribute text="{dashboard>CaseID}"/>
+                          <ObjectAttribute text="{dashboard>SPLEntryName}"/>
+                          <ObjectAttribute text="{dashboard>SPLProgramme}"/>
+                        </attributes>
+                        <firstStatus>
+                          <ObjectStatus
+                            text="{dashboard>DispositionBand}"
+                            state="{= ${dashboard>DispositionBandCriticality} === 1 ? 'Error' : (${dashboard>DispositionBandCriticality} === 2 ? 'Warning' : (${dashboard>DispositionBandCriticality} === 3 ? 'Success' : 'None'))}"/>
+                        </firstStatus>
+                      </ObjectListItem>
+                    </List>
+                  </VBox>
+
+                </VBox>
+              </IconTabFilter>
+
+              <!-- ─────────── TRANSACTION ADJUDICATION TAB ─────────── -->
+              <IconTabFilter key="doc" text="Transaction Adjudication" count="{dashboard>/docCount}" icon="sap-icon://shipping-status">
+
+                <VBox class="sapUiSmallMarginTop">
+                  <!-- Row 1: Value at risk hero + disposition + programme -->
+                  <HBox wrap="Wrap" alignItems="Stretch">
+
+                    <GenericTile
+                      header="Value at Risk"
+                      subheader="Blocked order value"
+                      class="sapUiSmallMarginEnd sapUiSmallMarginBottom"
+                      frameType="OneByOne"
+                      press=".onNavigateToDocList">
+                      <TileContent>
+                        <NumericContent
+                          value="{dashboard>/doc/totalValue}"
+                          scale="{dashboard>/doc/valueCurrency}"
+                          valueColor="Error"
+                          withMargin="false"
+                          truncateValueTo="6"/>
+                      </TileContent>
+                    </GenericTile>
+
+                    <GenericTile
+                      header="High Value"
+                      subheader="Above materiality (100K)"
+                      class="sapUiTinyMarginEnd sapUiSmallMarginBottom"
+                      frameType="OneByOne"
+                      press=".onTilePress">
+                      <customData>
+                        <core:CustomData key="filter" value="HighValue"/>
+                      </customData>
+                      <TileContent>
+                        <NumericContent
+                          value="{dashboard>/doc/highValueCount}"
+                          valueColor="Error"
+                          withMargin="false"/>
+                      </TileContent>
+                    </GenericTile>
+
+                    <VBox class="sapUiSmallMarginEnd sapUiSmallMarginBottom" width="320px">
+                      <ObjectStatus text="Queue by Disposition" class="sapUiTinyMarginBottom"/>
+                      <mc:StackedBarMicroChart
+                        id="docDispositionChart"
+                        height="2.5rem"
+                        precision="0">
+                        <mc:bars>
+                          <mc:StackedBarMicroChartBar value="{dashboard>/doc/escalateCount}" valueColor="Error" displayValue="{dashboard>/doc/escalateCount} Escalate"/>
+                          <mc:StackedBarMicroChartBar value="{dashboard>/doc/reviewCount}" valueColor="Critical" displayValue="{dashboard>/doc/reviewCount} Review"/>
+                          <mc:StackedBarMicroChartBar value="{dashboard>/doc/propClearCount}" valueColor="Good" displayValue="{dashboard>/doc/propClearCount} Propose Clear"/>
+                        </mc:bars>
+                      </mc:StackedBarMicroChart>
+                    </VBox>
+
+                  </HBox>
+
+                  <!-- Row 2: Ship-to country + Document type + Programme -->
+                  <HBox wrap="Wrap" alignItems="Stretch">
+
+                    <VBox class="sapUiSmallMarginEnd sapUiSmallMarginBottom" width="300px">
+                      <ObjectStatus text="By Ship-To Country" class="sapUiTinyMarginBottom"/>
+                      <List
+                        id="docShipToList"
+                        items="{dashboard>/doc/shipToCountries}"
+                        showNoData="false">
+                        <StandardListItem
+                          title="{dashboard>name}"
+                          counter="{dashboard>count}"
+                          info="{dashboard>value}"
+                          type="Active"
+                          press=".onShipToPress"/>
+                      </List>
+                    </VBox>
+
+                    <VBox class="sapUiSmallMarginEnd sapUiSmallMarginBottom" width="280px">
+                      <ObjectStatus text="By Document Type" class="sapUiTinyMarginBottom"/>
+                      <List
+                        id="docTypeList"
+                        items="{dashboard>/doc/docTypes}"
+                        showNoData="false">
+                        <StandardListItem
+                          title="{dashboard>name}"
+                          counter="{dashboard>count}"
+                          type="Active"/>
+                      </List>
+                    </VBox>
+
+                    <VBox class="sapUiSmallMarginBottom" width="280px">
+                      <ObjectStatus text="By Programme" class="sapUiTinyMarginBottom"/>
+                      <List
+                        id="docProgrammeList"
+                        items="{dashboard>/doc/programmes}"
+                        showNoData="false">
+                        <StandardListItem
+                          title="{dashboard>name}"
+                          counter="{dashboard>count}"
+                          type="Active"
+                          press=".onProgrammePress"/>
+                      </List>
+                    </VBox>
+
+                  </HBox>
+
+                  <!-- Row 3: Recent blocked documents -->
+                  <VBox class="sapUiSmallMarginTop">
+                    <ObjectStatus text="Most Recent Blocked Documents" class="sapUiTinyMarginBottom"/>
+                    <List
+                      id="docRecentList"
+                      items="{dashboard>/doc/recent}"
+                      showNoData="false">
+                      <ObjectListItem
+                        title="{dashboard>BusinessPartnerName}"
+                        number="{dashboard>OrderValue}"
+                        numberUnit="{dashboard>OrderCurrency}"
+                        type="Active"
+                        press=".onCasePress">
+                        <attributes>
+                          <ObjectAttribute text="{dashboard>CaseID}"/>
+                          <ObjectAttribute text="{dashboard>DocumentType} {dashboard>DocumentNumber}"/>
+                          <ObjectAttribute text="Ship to: {dashboard>ShipToCountry}"/>
+                        </attributes>
+                        <firstStatus>
+                          <ObjectStatus
+                            text="{dashboard>DispositionBand}"
+                            state="{= ${dashboard>DispositionBandCriticality} === 1 ? 'Error' : (${dashboard>DispositionBandCriticality} === 2 ? 'Warning' : (${dashboard>DispositionBandCriticality} === 3 ? 'Success' : 'None'))}"/>
+                        </firstStatus>
+                      </ObjectListItem>
+                    </List>
+                  </VBox>
+
+                </VBox>
+              </IconTabFilter>
+
+            </items>
+          </IconTabBar>
+
+        </VBox>
+      </content>
+
+    </Page>
+  </App>
+
+</mvc:View>
