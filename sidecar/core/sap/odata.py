@@ -15,9 +15,10 @@ and the release itself is always executed by a human in their own session
 from __future__ import annotations
 
 import logging
+import ssl
 import time
 from datetime import datetime, timezone
-from typing import Any, Iterator, Optional
+from typing import Any, Iterator, Optional, Union
 from urllib.parse import quote
 
 import httpx
@@ -53,6 +54,26 @@ RETRY_STATUS = {429, 500, 502, 503, 504}
 
 class ODataError(RuntimeError):
     """Non-retryable failure from the SAP Gateway."""
+
+
+def default_verify() -> Union[bool, ssl.SSLContext]:
+    """
+    Verify TLS against the operating system's trust store.
+
+    SAP systems behind corporate PKI present chains that Windows and macOS
+    trust but certifi does not ship, so Python fails where curl succeeds —
+    curl on Windows uses Schannel and reads the OS store. Verified against
+    AGP: certifi gives CERTIFICATE_VERIFY_FAILED, the OS store gives 401.
+
+    Falls back to httpx's certifi default if truststore isn't installed, so
+    this stays a soft dependency rather than an import-time failure.
+    """
+    try:
+        import truststore
+    except ImportError:  # pragma: no cover - depends on the environment
+        log.debug("truststore not installed; falling back to certifi")
+        return True
+    return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
 
 def _odata_datetime(dt: datetime) -> str:
@@ -106,7 +127,7 @@ class GtsODataClient:
         sap_client: str = "300",
         *,
         timeout: float = 60.0,
-        verify: bool | str = True,
+        verify: Union[bool, str, ssl.SSLContext, None] = None,
         max_retries: int = 3,
         http_client: Optional[httpx.Client] = None,
     ):
@@ -120,7 +141,7 @@ class GtsODataClient:
         self._client = http_client or httpx.Client(
             auth=(username, password),
             timeout=timeout,
-            verify=verify,
+            verify=default_verify() if verify is None else verify,
             headers={"Accept": "application/json"},
         )
 
