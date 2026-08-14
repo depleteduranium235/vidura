@@ -331,21 +331,51 @@ function handleOData(pathAfterService, params) {
     });
   }
 
-  // Keyed single-entity access: AdjudicationCase(<key>)
-  const keyed = path.match(/^([A-Za-z_][A-Za-z0-9_]*)\((.*)\)$/);
-  if (keyed) {
-    const set = keyed[1];
+  // Keyed access: AdjudicationCase(<key>) with optional trailing segments:
+  //   AdjudicationCase(<key>)                                  -> single entity
+  //   AdjudicationCase(<key>)/                                 -> single entity
+  //   AdjudicationCase(<key>)/_EvidenceItems                   -> navigation collection
+  //   AdjudicationCase(<key>)/zpwc.gts.spl_adjudication.action -> bound action
+  const keyedMatch = path.match(/^([A-Za-z_][A-Za-z0-9_]*)\(([^)]+)\)\/?(.*)$/);
+  if (keyedMatch) {
+    const set = keyedMatch[1];
+    const tail = keyedMatch[3]; // everything after the closing )/ — may be empty
     if (!store[set]) return jsonResponse({ error: { message: `Unknown set ${set}` } }, 404);
-    let key = keyed[2].trim();
-    // Accept 'x', guid'x', or a bare literal; strip any Key=value prefix.
+
+    let key = keyedMatch[2].trim();
     key = key.replace(/^[A-Za-z_][A-Za-z0-9_]*\s*=\s*/, "").replace(/^guid'|'$/g, "").replace(/^'|'$/g, "");
     const keyField = set === CASE_SET ? CASE_KEY : EVIDENCE_KEY;
     const found = store[set].find((r) => String(r[keyField]).toLowerCase() === key.toLowerCase());
     if (!found) {
       return jsonResponse({ error: { code: "404", message: "Not Found" } }, 404);
     }
+
+    // Bound actions: .../zpwc.gts.spl_adjudication.confirmRelease
+    const actionSuffix = tail.match(/^zpwc\.gts\.spl_adjudication\.(\w+)$/);
+    if (actionSuffix) {
+      return handleAction(set, keyedMatch[2], actionSuffix[1], params);
+    }
+
+    // Navigation property: .../_EvidenceItems
+    if (tail === EVIDENCE_NAV || tail === `${EVIDENCE_NAV}/`) {
+      let children = store[EVIDENCE_SET].filter((e) => e[CASE_KEY] === found[CASE_KEY]);
+      children = applyFilter(children, params.get("$filter"));
+      children = applyOrderby(children, params.get("$orderby") || "SortOrder");
+      const total = children.length;
+      const skip = Number(params.get("$skip") || 0);
+      const top = params.get("$top") ? Number(params.get("$top")) : undefined;
+      children = children.slice(skip, top === undefined ? undefined : skip + top);
+      const select = params.get("$select");
+      const value = children.map((c) => applySelect(c, select));
+      const body = { "@odata.context": `$metadata#${EVIDENCE_SET}` };
+      if (params.get("$count") === "true") body["@odata.count"] = total;
+      body.value = value;
+      return jsonResponse(body);
+    }
+
+    // Plain keyed access (no tail, or just a trailing slash)
     let row = applySelect(found, params.get("$select"));
-    row[keyField] = found[keyField]; // the key must survive $select
+    row[keyField] = found[keyField];
     row = attachExpand(row, parseExpand(params.get("$expand")));
     return jsonResponse({ "@odata.context": `$metadata#${set}/$entity`, ...row });
   }
@@ -388,6 +418,63 @@ function handleOData(pathAfterService, params) {
   return jsonResponse(body);
 }
 
+/* --------------------------------------------------------------- actions */
+
+const ACTIONS = {
+  confirmRelease: (row, body) => {
+    row.HumanDecision = "Confirmed";
+    row.HumanUser = "demo.reviewer@pwc.com";
+    row.HumanComment = body?.Comment || "";
+    row.DecisionTimestamp = new Date().toISOString();
+    row.Status = "Released";
+    row.StatusCriticality = 3; // Positive (green)
+    row.ChangedAt = new Date().toISOString();
+  },
+  rejectRelease: (row, body) => {
+    row.HumanDecision = "Rejected";
+    row.HumanUser = "demo.reviewer@pwc.com";
+    row.HumanComment = body?.Comment || "";
+    row.DecisionTimestamp = new Date().toISOString();
+    row.Status = "Rejected";
+    row.StatusCriticality = 1; // Negative (red)
+    row.ChangedAt = new Date().toISOString();
+  },
+  escalateCase: (row, body) => {
+    row.HumanDecision = "Escalated";
+    row.HumanUser = "demo.reviewer@pwc.com";
+    row.HumanComment = body?.Comment || "";
+    row.AssignedTo = body?.EscalateTo || "senior.reviewer@pwc.com";
+    row.DecisionTimestamp = new Date().toISOString();
+    row.Status = "Escalated";
+    row.StatusCriticality = 2; // Critical (orange)
+    row.Priority = "Critical";
+    row.PriorityCriticality = 1;
+    row.ChangedAt = new Date().toISOString();
+  },
+};
+
+function handleAction(setName, rawKey, actionName, params) {
+  if (!ACTIONS[actionName]) {
+    return jsonResponse({ error: { message: `Unknown action: ${actionName}` } }, 400);
+  }
+  if (!store[setName]) {
+    return jsonResponse({ error: { message: `Unknown set: ${setName}` } }, 404);
+  }
+
+  let key = rawKey.trim().replace(/^[A-Za-z_][A-Za-z0-9_]*\s*=\s*/, "")
+    .replace(/^guid'|'$/g, "").replace(/^'|'$/g, "");
+  const keyField = setName === CASE_SET ? CASE_KEY : EVIDENCE_KEY;
+  const row = store[setName].find((r) => String(r[keyField]).toLowerCase() === key.toLowerCase());
+
+  if (!row) return jsonResponse({ error: { code: "404", message: "Not Found" } }, 404);
+
+  // The body carries the action parameters (Comment, EscalateTo, etc.)
+  // For GET-style dispatch from $batch, body may already be parsed.
+  ACTIONS[actionName](row, params.__actionBody || {});
+
+  return jsonResponse({ "@odata.context": `$metadata#${setName}/$entity`, ...row });
+}
+
 /* ----------------------------------------------------------------- $batch */
 
 async function handleBatch(request, serviceBase) {
@@ -400,7 +487,8 @@ async function handleBatch(request, serviceBase) {
     const payload = JSON.parse(text);
     const responses = [];
     for (const req of payload.requests || []) {
-      const res = await dispatchInner(req.method || "GET", req.url, serviceBase);
+      const res = await dispatchInner(req.method || "GET", req.url, serviceBase,
+        req.body ? JSON.stringify(req.body) : null);
       responses.push({
         id: req.id,
         status: res.status,
@@ -422,7 +510,12 @@ async function handleBatch(request, serviceBase) {
     // Each part: part headers, blank line, request line + headers, blank, body.
     const requestLine = part.match(/^\s*(GET|POST|PATCH|PUT|DELETE|HEAD)\s+(\S+)/m);
     if (!requestLine) continue;
-    const res = await dispatchInner(requestLine[1], requestLine[2], serviceBase);
+    // Extract body from the part: everything after the double blank line
+    // (the first blank separates part-headers from the HTTP message, the second
+    // separates HTTP headers from the body).
+    const bodyMatch = part.split(/\r?\n\r?\n/);
+    const innerBody = bodyMatch.length >= 3 ? bodyMatch.slice(2).join("\n\n").trim() : null;
+    const res = await dispatchInner(requestLine[1], requestLine[2], serviceBase, innerBody);
     const body = await res.text();
     chunks.push(
       `--${respBoundary}\r\n` +
@@ -447,7 +540,7 @@ async function handleBatch(request, serviceBase) {
   });
 }
 
-function dispatchInner(method, rawUrl, serviceBase) {
+function dispatchInner(method, rawUrl, serviceBase, body) {
   // Inner URLs are relative to the batch's service root.
   const url = new URL(rawUrl, serviceBase);
   let tail = url.pathname;
@@ -455,7 +548,12 @@ function dispatchInner(method, rawUrl, serviceBase) {
   if (idx >= 0) tail = tail.slice(idx + SERVICE_MARKER.length);
   else tail = tail.replace(/^\//, "");
   if (method === "HEAD") return Promise.resolve(new Response(null, { status: 200 }));
-  return Promise.resolve(handleOData(tail, url.searchParams));
+  // Pass any POST body to handleOData so bound actions can read their parameters.
+  const params = url.searchParams;
+  if (body && method === "POST") {
+    try { params.__actionBody = JSON.parse(body); } catch { params.__actionBody = {}; }
+  }
+  return Promise.resolve(handleOData(tail, params));
 }
 
 /* ------------------------------------------------------------------- fetch */

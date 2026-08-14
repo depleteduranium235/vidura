@@ -75,6 +75,35 @@
         <NavigationProperty Name="_Case" Type="zpwc.gts.spl_adjudication.AdjudicationCaseType" Partner="_EvidenceItems"/>
       </EntityType>
 
+      <!-- Bound actions: reviewer decisions.
+           In production these hot-wire to Manage Blocked Partners (F4542A) via
+           deep link or RAP delegation. The goal is a one-stop solution — the
+           reviewer reads the evidence, decides, and the release/block/escalation
+           executes without switching to another app.
+
+           Each action takes a comment (optional free text the reviewer adds to
+           document their reasoning beyond what the agent already wrote) and
+           returns the updated case. -->
+
+      <Action Name="confirmRelease" IsBound="true">
+        <Parameter Name="in" Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+        <Parameter Name="Comment" Type="Edm.String" MaxLength="2000" Nullable="true"/>
+        <ReturnType Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+      </Action>
+
+      <Action Name="rejectRelease" IsBound="true">
+        <Parameter Name="in" Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+        <Parameter Name="Comment" Type="Edm.String" MaxLength="2000" Nullable="true"/>
+        <ReturnType Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+      </Action>
+
+      <Action Name="escalateCase" IsBound="true">
+        <Parameter Name="in" Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+        <Parameter Name="Comment" Type="Edm.String" MaxLength="2000" Nullable="true"/>
+        <Parameter Name="EscalateTo" Type="Edm.String" MaxLength="80" Nullable="true"/>
+        <ReturnType Type="zpwc.gts.spl_adjudication.AdjudicationCaseType"/>
+      </Action>
+
       <EntityContainer Name="EntityContainer">
         <EntitySet Name="AdjudicationCase" EntityType="zpwc.gts.spl_adjudication.AdjudicationCaseType">
           <NavigationPropertyBinding Path="_EvidenceItems" Target="EvidenceItem"/>
@@ -102,6 +131,33 @@
               </Record>
             </PropertyValue>
           </Record>
+        </Annotation>
+
+        <!-- Object Page header actions.
+             These appear as buttons in the Object Page header bar. In production
+             they hot-wire to Manage Blocked Partners (F4542A):
+               confirmRelease -> execute the release under the reviewer's user ID
+               rejectRelease  -> keep the block, document why
+               escalateCase   -> assign to a senior reviewer
+
+             The comment parameter opens as a dialog field so the reviewer can
+             add free text before executing. -->
+        <Annotation Term="com.sap.vocabularies.UI.v1.Identification">
+          <Collection>
+            <Record Type="com.sap.vocabularies.UI.v1.DataFieldForAction">
+              <PropertyValue Property="Label" String="Confirm Release"/>
+              <PropertyValue Property="Action" String="zpwc.gts.spl_adjudication.confirmRelease"/>
+              <PropertyValue Property="Criticality" Path="StatusCriticality"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataFieldForAction">
+              <PropertyValue Property="Label" String="Reject"/>
+              <PropertyValue Property="Action" String="zpwc.gts.spl_adjudication.rejectRelease"/>
+            </Record>
+            <Record Type="com.sap.vocabularies.UI.v1.DataFieldForAction">
+              <PropertyValue Property="Label" String="Escalate"/>
+              <PropertyValue Property="Action" String="zpwc.gts.spl_adjudication.escalateCase"/>
+            </Record>
+          </Collection>
         </Annotation>
 
         <Annotation Term="com.sap.vocabularies.UI.v1.SelectionFields">
