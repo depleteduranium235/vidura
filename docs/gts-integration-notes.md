@@ -132,7 +132,71 @@ GTS transaction".
 
 ---
 
+## 3a. CORRECTION — `MatchedName` / `MatchedAddress` carry entry content
+
+§4 below was written believing these were boolean-ish flags. **They are not.**
+They hold the sanctioned party's own name and address as HTML, with `<strong>`
+around the tokens GTS matched:
+
+```
+MatchedName    = '<strong>Baring</strong> <strong>Buyeers</strong><br>'
+MatchedAddress = 'Av. de Arag&oacute;n,;   Madrid<br>'
+```
+
+So we **do** get the SPL entry's name and address over OData. `strip_highlight()`
+and `highlighted_tokens()` in `core/sap/schemas.py` parse them, and the matched
+tokens feed `match_basis` — token rarity is part of the assessment (§3.1 #6).
+
+Still missing and still needing a Z view: **aliases, DOB, POB, nationality,
+passport / national ID / registration / LEI, listing history, remarks**.
+
+A real end-to-end case, which is adjudicatable:
+
+| | |
+|---|---|
+| BP | `Bearing Buyers Limited`, UA, organisation |
+| SPL entry `100404` (list `GPC`, provider `PWCDATA`) | `Baring Buyeers`, `Av. de Aragón, Madrid` |
+| Basis | Matched on name (Baring, Buyeers) + address |
+| **Human decision** | **False-Positive: BP approved for release** |
+
+### There is ground truth in AGP
+
+124 records carry a human decision, 91 a release reason, made by 11 named
+reviewers (`YYUAN062` alone made 75). **18 are on SPL regulations.** The release
+reason vocabulary is a usable label set:
+
+| Release reason | n | Maps to |
+|---|---|---|
+| False-Positive - Business Partner approved for release | 40 | cleared |
+| False-Positive: BP approved for release | 33 | cleared |
+| **Business partner matched to SPL record** | **30** | **confirmed true positive** |
+| Transaction approved for release | 10 | cleared (document path) |
+| False Match | 2 | cleared |
+
+> **A backtest must read UNFILTERED.** Once a record is released it is no longer
+> `SPLScreenedAddressIsBlocked = true`, so the blocked-only feed cannot see any
+> decided record. This is why reading the broader "Manage Partners" service
+> rather than a blocked-only one matters (and it is the same property §7's
+> continuous re-adjudication depends on).
+
+### Two SAP gaps
+
+- **No audit-trail service is registered** in client 300 — 62 services total, and
+  the only SPL-related ones are the five `LLS_*` already documented. Whatever
+  "Display Audit Trails - Business Partners" is, it is not an activated OData
+  service here. Check `/IWFND/MAINT_SERVICE` → **Add Service** for an
+  available-but-inactive one.
+- **`to_SPLBlkdAddrCmt` returns HTTP 501** — *"Method
+  'SPLBLKDADDRCMTSE_GET_ENTITY' not implemented in data provider class"*. The
+  navigation is declared in metadata with no backend handler. Do not expand it.
+
+---
+
 ## 4. The gap: no sanctioned-party content
+
+> **Superseded in part by §3a** — the entry's *name and address* are available.
+> What follows applies to the remaining §4.1 fields: aliases, DOB, POB,
+> nationality, identifiers, listing history and remarks.
 
 **Verified absent from all three services.** The agent gets the *pointer* to an
 SPL entry and nothing to dereference it against.
