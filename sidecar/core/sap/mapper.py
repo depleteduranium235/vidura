@@ -57,7 +57,18 @@ def to_hit_inputs(record: ScreenedPartnerAddress) -> list[HitInput]:
     return [_to_hit_input(record, hit) for hit in record.hits]
 
 
+def _date_only(value) -> str:
+    """
+    Render a date without a time component.
+
+    A DOB with a spurious 00:00:00 invites the model to treat precision it
+    doesn't have as meaningful.
+    """
+    return value.date().isoformat() if value else ""
+
+
 def _to_hit_input(record: ScreenedPartnerAddress, hit: SplHitDetail) -> HitInput:
+    master = record.master
     return HitInput(
         case_id=case_id_for(record, hit),
         bp_id=record.business_partner,
@@ -65,6 +76,14 @@ def _to_hit_input(record: ScreenedPartnerAddress, hit: SplHitDetail) -> HitInput
         bp_country=record.country,
         bp_entity_type=record.entity_type,
         bp_registration_no=_primary_registration(record),
+        # §4.1 discriminators — only present when BP master was fetched.
+        bp_date_of_birth=_date_only(master.birth_date) if master else "",
+        bp_birthplace=master.birthplace if master else "",
+        bp_nationality=master.nationality if master else "",
+        bp_name_at_birth=master.birth_name if master else "",
+        bp_foundation_date=_date_only(master.foundation_date) if master else "",
+        bp_industry=master.industry if master else "",
+        bp_all_identifiers=all_identifiers(record),
         spl_entry_id=hit.spl_entity,
         # Entry content (name, aliases, DOB, nationality, identifiers, remarks)
         # is NOT in this service — it lives in /SAPSLL/TSPL* and needs a Z CDS

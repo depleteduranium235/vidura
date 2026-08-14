@@ -28,6 +28,11 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 # Not ISO 8601, so it needs decoding before Pydantic sees it.
 _SAP_DATE_RE = re.compile(r"^/Date\((-?\d+)([+-]\d+)?\)/$")
 
+# Epoch arithmetic, deliberately not datetime.fromtimestamp(): that raises
+# OSError on Windows for negative values, and pre-1970 dates are routine here
+# — any date of birth before 1970 would crash the reader.
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
 
 def _parse_sap_datetime(value: Any) -> Any:
     """Decode a V2 date literal; pass anything else through to Pydantic."""
@@ -38,7 +43,7 @@ def _parse_sap_datetime(value: Any) -> Any:
     if isinstance(value, str):
         match = _SAP_DATE_RE.match(value.strip())
         if match:
-            dt = datetime.fromtimestamp(int(match.group(1)) / 1000, tz=timezone.utc)
+            dt = _EPOCH + timedelta(milliseconds=int(match.group(1)))
             if match.group(2):
                 minutes = int(match.group(2))  # signed, already in minutes
                 dt += timedelta(minutes=minutes)
@@ -158,6 +163,79 @@ class AssociatedBank(_SapModel):
     exclusion_category: str = Field(alias="SPLScreeningExclusionCategory", default="")
 
 
+class BusinessPartnerMaster(_SapModel):
+    """
+    Subset of I_BusinessPartner (81 props) carrying §4.1's highest-value
+    discriminators. Entity set: I_BusinessPartner.
+
+    Not reachable by navigation from the screening root — to_RefBusinessPartnerExt
+    only reaches the external-ID entity — so this needs a separate keyed GET.
+    """
+
+    business_partner: str = Field(alias="BusinessPartner")
+
+    # SAP BP category is the authoritative person/organisation flag:
+    #   1 = Person, 2 = Organization, 3 = Group
+    category: str = Field(alias="BusinessPartnerCategory", default="")
+    bp_type: str = Field(alias="BusinessPartnerType", default="")
+
+    # Natural-person discriminators (§4.1)
+    first_name: str = Field(alias="FirstName", default="")
+    last_name: str = Field(alias="LastName", default="")
+    birth_date: SapDateTime = Field(alias="BirthDate", default=None)
+    birth_date_status: str = Field(alias="BusinessPartnerBirthDateStatus", default="")
+    birth_name: str = Field(alias="BusinessPartnerBirthName", default="")
+    birthplace: str = Field(alias="BusinessPartnerBirthplaceName", default="")
+    nationality: str = Field(alias="BusPartNationality", default="")
+
+    # Legal-entity discriminators
+    foundation_date: SapDateTime = Field(alias="OrganizationFoundationDate", default=None)
+    industry: str = Field(alias="Industry", default="")
+
+    is_centrally_blocked: bool = Field(alias="BusinessPartnerIsBlocked", default=False)
+
+    @property
+    def is_natural_person(self) -> Optional[bool]:
+        """
+        True for a person, False for an organisation, None when SAP hasn't
+        classified it. None matters: §3.1 #3 makes unknown data neutral, so an
+        unclassified BP must not be treated as either.
+        """
+        if self.category == "1":
+            return True
+        if self.category in ("2", "3"):
+            return False
+        return None
+
+    @property
+    def entity_type(self) -> str:
+        """Authoritative entity type, from BP category rather than inference."""
+        return {
+            "1": "Natural Person",
+            "2": "Legal Entity (Organization)",
+            "3": "Group",
+        }.get(self.category, "")
+
+
+# Explicit $select list — declared outside the class so it isn't mistaken for
+# a model field.
+BP_MASTER_SELECT: tuple[str, ...] = (
+    "BusinessPartner",
+    "BusinessPartnerCategory",
+    "BusinessPartnerType",
+    "FirstName",
+    "LastName",
+    "BirthDate",
+    "BusinessPartnerBirthDateStatus",
+    "BusinessPartnerBirthName",
+    "BusinessPartnerBirthplaceName",
+    "BusPartNationality",
+    "OrganizationFoundationDate",
+    "Industry",
+    "BusinessPartnerIsBlocked",
+)
+
+
 class ScreenedPartnerAddress(_SapModel):
     """
     Root entity: C_SPLScrngScreenedPrtnAddress.
@@ -230,6 +308,11 @@ class ScreenedPartnerAddress(_SapModel):
     associated_blocked_objects: list[AssociatedBlockedObject] = Field(default_factory=list)
     associated_banks: list[AssociatedBank] = Field(default_factory=list)
 
+    # Attached by a separate keyed GET, since I_BusinessPartner is not
+    # navigable from this entity. None when enrichment is skipped or fails —
+    # never a fabricated stand-in.
+    master: Optional[BusinessPartnerMaster] = None
+
     @property
     def case_key(self) -> str:
         """
@@ -258,9 +341,15 @@ class ScreenedPartnerAddress(_SapModel):
     def entity_type(self) -> str:
         """
         Natural person vs legal entity — the most common dispositive
-        exclusion (§3.2). GTS carries this as the BP category; PersonFullName
-        is only populated for natural persons.
+        exclusion (§3.2).
+
+        Prefers BusinessPartnerCategory from BP master, which is authoritative.
+        Falls back to inferring from PersonFullName only when master data
+        wasn't fetched, and returns "" rather than guessing when neither is
+        available — an unknown entity type must stay neutral (§3.1 #3).
         """
+        if self.master is not None and self.master.entity_type:
+            return self.master.entity_type
         if self.person_full_name:
             return "Natural Person"
         if self.gts_bp_type:

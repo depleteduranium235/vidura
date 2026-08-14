@@ -86,6 +86,17 @@ class HitInput(BaseModel):
     bp_country: str = ""
     bp_entity_type: str = ""
     bp_registration_no: str = ""
+
+    # §4.1's highest-value discriminators, BP side. Empty means "not available",
+    # which the extractor must classify as NEUTRAL (§3.1 #3) rather than as a
+    # mismatch — absence of evidence is not evidence of absence.
+    bp_date_of_birth: str = ""
+    bp_birthplace: str = ""
+    bp_nationality: str = ""
+    bp_name_at_birth: str = ""
+    bp_foundation_date: str = ""
+    bp_industry: str = ""
+    bp_all_identifiers: list[str] = Field(default_factory=list)
     spl_entry_id: str
     spl_entry_name: str
     spl_list_type: str

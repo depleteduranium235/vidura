@@ -23,9 +23,11 @@ from urllib.parse import quote
 import httpx
 
 from .schemas import (
+    BP_MASTER_SELECT,
     AssociatedBank,
     AssociatedBlockedObject,
     BpIdentification,
+    BusinessPartnerMaster,
     ScreenedPartnerAddress,
     SplHitDetail,
 )
@@ -34,6 +36,7 @@ log = logging.getLogger(__name__)
 
 SERVICE_PATH = "/sap/opu/odata/sap/LLS_BPADDR_MNG_SRV"
 ENTITY_SET = "C_SPLScrngScreenedPrtnAddress"
+BP_ENTITY_SET = "I_BusinessPartner"
 
 # Navigation properties on the root entity, mapped to the child model and the
 # attribute they populate.
@@ -110,6 +113,9 @@ class GtsODataClient:
         self.base_url = base_url.rstrip("/")
         self.sap_client = sap_client
         self.max_retries = max_retries
+        # One BP commonly has several blocked addresses, so cache master data
+        # for the lifetime of the client rather than refetching per address.
+        self._bp_cache: dict[str, Optional[BusinessPartnerMaster]] = {}
         self._owns_client = http_client is None
         self._client = http_client or httpx.Client(
             auth=(username, password),
@@ -175,6 +181,32 @@ class GtsODataClient:
         self._get(f"{SERVICE_PATH}/{ENTITY_SET}", {"$top": "1", "$select": "BusinessPartner"})
         return True
 
+    def fetch_business_partner(self, business_partner: str) -> Optional[BusinessPartnerMaster]:
+        """
+        Fetch BP master for §4.1's discriminators — entity category, DOB,
+        birthplace, nationality, name at birth, foundation date, industry.
+
+        Cached per client. Returns None if the BP can't be read, rather than
+        raising: enrichment is additive, and a missing BP must degrade to
+        neutral evidence (§3.1 #3) instead of failing the adjudication.
+        """
+        if business_partner in self._bp_cache:
+            return self._bp_cache[business_partner]
+
+        # V2 keyed access: I_BusinessPartner('0010000108')
+        path = f"{SERVICE_PATH}/{BP_ENTITY_SET}('{quote(business_partner, safe='')}')"
+        try:
+            payload = self._get(path, {"$select": ",".join(BP_MASTER_SELECT)})
+        except ODataError as exc:
+            log.warning("BP master unavailable for %s: %s", business_partner, exc)
+            self._bp_cache[business_partner] = None
+            return None
+
+        rows = _unwrap(payload.get("d"))
+        master = BusinessPartnerMaster.model_validate(rows[0]) if rows else None
+        self._bp_cache[business_partner] = master
+        return master
+
     def iter_blocked_addresses(
         self,
         since: Optional[datetime] = None,
@@ -183,6 +215,7 @@ class GtsODataClient:
         unprocessed_only: bool = False,
         page_size: int = DEFAULT_PAGE_SIZE,
         expand: bool = True,
+        enrich_bp: bool = True,
     ) -> Iterator[ScreenedPartnerAddress]:
         """
         Yield blocked screening results, newest activity first.
@@ -216,7 +249,10 @@ class GtsODataClient:
                 return
 
             for row in rows:
-                yield self._parse(row)
+                record = self._parse(row)
+                if enrich_bp and record.business_partner:
+                    record.master = self.fetch_business_partner(record.business_partner)
+                yield record
 
             if len(rows) < page_size:
                 return

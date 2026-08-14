@@ -108,8 +108,45 @@ def screened_row(**overrides):
     return row
 
 
-def make_client(handler) -> GtsODataClient:
-    transport = httpx.MockTransport(handler)
+def bp_row(**overrides):
+    """A V2 keyed-read response body for I_BusinessPartner."""
+    row = {
+        "BusinessPartner": "0010000108",
+        "BusinessPartnerCategory": "2",  # 2 = Organization
+        "BusinessPartnerType": "",
+        "FirstName": "",
+        "LastName": "",
+        "BirthDate": None,
+        "BusinessPartnerBirthName": "",
+        "BusinessPartnerBirthplaceName": "",
+        "BusPartNationality": "",
+        "OrganizationFoundationDate": "/Date(852076800000)/",  # 1997-01-01
+        "Industry": "MACH",
+        "BusinessPartnerIsBlocked": False,
+    }
+    row.update(overrides)
+    return row
+
+
+def is_bp_request(request) -> bool:
+    return "I_BusinessPartner" in str(request.url)
+
+
+def make_client(handler, bp=None) -> GtsODataClient:
+    """
+    Wraps the handler so I_BusinessPartner requests get a BP master payload.
+
+    Without this the screened-row handler answers BP reads too, and since the
+    models ignore unknown fields, `master` gets silently populated with the
+    wrong entity — a bug that hides rather than fails.
+    """
+
+    def routed(request):
+        if is_bp_request(request):
+            return httpx.Response(200, json={"d": bp if bp is not None else bp_row()})
+        return handler(request)
+
+    transport = httpx.MockTransport(routed)
     http = httpx.Client(transport=transport, headers={"Accept": "application/json"})
     return GtsODataClient(BASE, "TECHUSER", "pw", http_client=http)
 
@@ -286,6 +323,8 @@ class TestParsing:
 
 
 class TestPaging:
+    """Only page requests are counted; BP enrichment issues its own calls."""
+
     def test_stops_on_short_page(self):
         calls = []
 
@@ -313,7 +352,178 @@ class TestPaging:
             recs = list(c.iter_blocked_addresses(page_size=2))
 
         assert len(recs) == 4
-        assert [int(c["$skip"]) for c in calls] == [0, 2, 4]
+        assert [int(p["$skip"]) for p in calls] == [0, 2, 4]
+
+
+class TestBpEnrichment:
+    def test_master_attached_and_entity_type_authoritative(self):
+        """BusinessPartnerCategory beats the PersonFullName heuristic."""
+
+        def handler(request):
+            return httpx.Response(200, json={"d": {"results": [screened_row()]}})
+
+        with make_client(handler) as c:
+            rec = next(iter(c.iter_blocked_addresses()))
+
+        assert rec.master is not None
+        assert rec.master.is_natural_person is False
+        assert rec.entity_type == "Legal Entity (Organization)"
+
+    def test_natural_person_category(self):
+        def handler(request):
+            return httpx.Response(200, json={"d": {"results": [screened_row()]}})
+
+        bp = bp_row(
+            BusinessPartnerCategory="1",
+            FirstName="Hans-Peter",
+            LastName="Schmidt",
+            BirthDate="/Date(-372470400000)/",  # 1958-03-14
+            BusPartNationality="RU",
+            BusinessPartnerBirthplaceName="Moscow",
+        )
+        with make_client(handler, bp=bp) as c:
+            rec = next(iter(c.iter_blocked_addresses()))
+
+        assert rec.master.is_natural_person is True
+        assert rec.entity_type == "Natural Person"
+        assert rec.master.birth_date.date().isoformat() == "1958-03-14"
+        assert rec.master.nationality == "RU"
+
+    def test_unclassified_category_is_neutral_not_guessed(self):
+        """§3.1 #3 — an unclassified BP must not be forced into either bucket."""
+
+        def handler(request):
+            return httpx.Response(200, json={"d": {"results": [screened_row()]}})
+
+        with make_client(handler, bp=bp_row(BusinessPartnerCategory="")) as c:
+            rec = next(iter(c.iter_blocked_addresses()))
+
+        assert rec.master.is_natural_person is None
+        assert rec.master.entity_type == ""
+
+    def test_select_limits_fields_requested(self):
+        seen = {}
+
+        def handler(request):
+            return httpx.Response(200, json={"d": {"results": [screened_row()]}})
+
+        def routed(request):
+            if is_bp_request(request):
+                seen["params"] = dict(request.url.params)
+                return httpx.Response(200, json={"d": bp_row()})
+            return handler(request)
+
+        http = httpx.Client(transport=httpx.MockTransport(routed))
+        with GtsODataClient(BASE, "u", "p", http_client=http) as c:
+            list(c.iter_blocked_addresses())
+
+        # Tight $select rather than pulling all 81 properties
+        assert "BusinessPartnerCategory" in seen["params"]["$select"]
+        assert "BirthDate" in seen["params"]["$select"]
+        assert len(seen["params"]["$select"].split(",")) < 20
+
+    def test_bp_fetched_once_per_partner(self):
+        """One BP with several blocked addresses must not refetch master."""
+        bp_calls = {"n": 0}
+
+        def routed(request):
+            if is_bp_request(request):
+                bp_calls["n"] += 1
+                return httpx.Response(200, json={"d": bp_row()})
+            skip = int(dict(request.url.params).get("$skip", 0))
+            rows = [screened_row(AddressID=f"000001234{i}") for i in range(2)] if skip == 0 else []
+            return httpx.Response(200, json={"d": {"results": rows}})
+
+        http = httpx.Client(transport=httpx.MockTransport(routed))
+        with GtsODataClient(BASE, "u", "p", http_client=http) as c:
+            recs = list(c.iter_blocked_addresses(page_size=2))
+
+        assert len(recs) == 2
+        assert bp_calls["n"] == 1
+
+    def test_bp_failure_degrades_to_none(self, monkeypatch):
+        """Enrichment is additive; a missing BP must not fail the adjudication."""
+        monkeypatch.setattr("core.sap.odata.time.sleep", lambda *_: None)
+
+        def routed(request):
+            if is_bp_request(request):
+                return httpx.Response(404, text="Not Found")
+            return httpx.Response(200, json={"d": {"results": [screened_row()]}})
+
+        http = httpx.Client(transport=httpx.MockTransport(routed))
+        with GtsODataClient(BASE, "u", "p", http_client=http) as c:
+            rec = next(iter(c.iter_blocked_addresses()))
+
+        assert rec.master is None
+        # Falls back to the heuristic rather than crashing
+        assert rec.entity_type == "Legal Entity (BP)"
+
+    def test_enrichment_can_be_disabled(self):
+        bp_calls = {"n": 0}
+
+        def routed(request):
+            if is_bp_request(request):
+                bp_calls["n"] += 1
+                return httpx.Response(200, json={"d": bp_row()})
+            return httpx.Response(200, json={"d": {"results": [screened_row()]}})
+
+        http = httpx.Client(transport=httpx.MockTransport(routed))
+        with GtsODataClient(BASE, "u", "p", http_client=http) as c:
+            rec = next(iter(c.iter_blocked_addresses(enrich_bp=False)))
+
+        assert bp_calls["n"] == 0
+        assert rec.master is None
+
+    def test_discriminators_reach_hit_input(self):
+        """§4.1 fields must land on HitInput for the extractor to see them."""
+
+        def handler(request):
+            return httpx.Response(200, json={"d": {"results": [screened_row()]}})
+
+        bp = bp_row(
+            BusinessPartnerCategory="1",
+            BirthDate="/Date(-372470400000)/",
+            BusPartNationality="RU",
+            BusinessPartnerBirthplaceName="Moscow",
+            BusinessPartnerBirthName="Schmidt",
+            Industry="MACH",
+        )
+        with make_client(handler, bp=bp) as c:
+            hits = to_hit_inputs(next(iter(c.iter_blocked_addresses())))
+
+        h = hits[0]
+        assert h.bp_date_of_birth == "1958-03-14"
+        assert h.bp_nationality == "RU"
+        assert h.bp_birthplace == "Moscow"
+        assert h.bp_name_at_birth == "Schmidt"
+        assert h.bp_industry == "MACH"
+        assert h.bp_entity_type == "Natural Person"
+        # Full identifier set, not just the primary (§3.2)
+        assert len(h.bp_all_identifiers) == 2
+
+    def test_missing_master_leaves_discriminators_empty_not_fabricated(self):
+        def handler(request):
+            return httpx.Response(200, json={"d": {"results": [screened_row()]}})
+
+        with make_client(handler) as c:
+            rec = next(iter(c.iter_blocked_addresses(enrich_bp=False)))
+
+        h = to_hit_inputs(rec)[0]
+        assert h.bp_date_of_birth == ""
+        assert h.bp_nationality == ""
+        assert h.bp_foundation_date == ""
+
+    def test_date_only_no_spurious_time_component(self):
+        """A DOB rendered with 00:00:00 implies precision we don't have."""
+
+        def handler(request):
+            return httpx.Response(200, json={"d": {"results": [screened_row()]}})
+
+        with make_client(handler) as c:
+            h = to_hit_inputs(next(iter(c.iter_blocked_addresses())))[0]
+
+        assert h.bp_foundation_date == "1997-01-01"
+        assert ":" not in h.bp_foundation_date
 
 
 class TestErrorHandling:
@@ -386,8 +596,9 @@ class TestMapper:
         hits = to_hit_inputs(self._record())
         assert "HRB 54321" in hits[0].bp_registration_no
 
-    def test_entity_type_derived_for_legal_entity(self):
-        assert to_hit_inputs(self._record())[0].bp_entity_type == "Legal Entity (BP)"
+    def test_entity_type_uses_authoritative_bp_category(self):
+        """Enriched records report BP category, not the gts_bp_type heuristic."""
+        assert to_hit_inputs(self._record())[0].bp_entity_type == "Legal Entity (Organization)"
 
     def test_intake_path_is_bp_block(self):
         assert all(h.intake_path == IntakePath.BP_BLOCK for h in to_hit_inputs(self._record()))
