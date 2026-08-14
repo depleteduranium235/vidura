@@ -265,6 +265,40 @@ The network evidence I'd counted on (§3.1 #8) is therefore unavailable in AGP:
 the `SPLScrngBPIdnIsHidden` / `SPLScrngBPBankIsHidden` / `SPLScrngBkAssocdBPIsHidden`
 flags all come back `true`, which is GTS telling the UI those sections are empty.
 
+### BP population — surveyed in full, not sampled
+
+Queried `I_BusinessPartner` across the whole population, so this is not sample bias:
+
+| | |
+|---|---|
+| Total BPs | **4,119** |
+| Natural persons (category `1`) | **43** |
+| Organizations (category `2`) | 4,076 |
+| **With a date of birth** | **0** |
+| **With nationality** | **0** |
+| **With birthplace** | **0** |
+| **With name at birth** | **0** |
+| **With foundation date** | **0** |
+| **With industry** | **0** |
+| Centrally blocked | 0 |
+
+The 43 natural persons are SAP demo employees — *Test Employee*, *Thomas Falkenberg*,
+*Monica Ziegler*, *Frank Bauer*, *Michael Meier*. None is a plausible sanctioned-party
+match.
+
+The `SPLSY` population (30 screened) is hand-built test data: `Basam Hasan`,
+`Bearing Buyers Limited`, `Test Carrier`, and a BP numbered `DESCARTES` named
+"Vendor domestic 00 Warehouse".
+
+BP 229 — the single SPL-blocked record — is category `2` with no first or last name
+and no discriminators.
+
+**Searching the existing population cannot fix this.** There is no BP in AGP with
+the master data an identity comparison needs, so no read-only selection of test
+cases is possible. Seeding would require SAP GUI work (BP creation plus a screening
+run); no OData path exists — every entity set is read-only except the release-action
+entities, which §5.4 forbids the sidecar from touching.
+
 ### What follows
 
 AGP can prove **the pipe**, not **the adjudication**. Options, in order of value:
