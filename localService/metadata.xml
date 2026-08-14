@@ -368,15 +368,30 @@
         <!-- Object Page Sections -->
         <Annotation Term="com.sap.vocabularies.UI.v1.Facets">
           <Collection>
-            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+            <!-- Agent Assessment is a CollectionFacet so it contains both the
+                 per-field evidence breakdown (the table) and the summary fields
+                 in one section, without requiring a separate tab click. Each row
+                 in the table is one data element (Entity Type, Country, Name
+                 Rarity...) with its own classification and assessment — matching
+                 the previous design where the rationale was broken out per field
+                 rather than presented as a single blob. -->
+            <Record Type="com.sap.vocabularies.UI.v1.CollectionFacet">
               <PropertyValue Property="ID" String="AgentAssessment"/>
               <PropertyValue Property="Label" String="Agent Assessment"/>
-              <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.FieldGroup#AgentAssessment"/>
-            </Record>
-            <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
-              <PropertyValue Property="ID" String="EvidenceLedger"/>
-              <PropertyValue Property="Label" String="Evidence Ledger"/>
-              <PropertyValue Property="Target" AnnotationPath="_EvidenceItems/@com.sap.vocabularies.UI.v1.LineItem"/>
+              <PropertyValue Property="Facets">
+                <Collection>
+                  <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+                    <PropertyValue Property="ID" String="EvidenceBreakdown"/>
+                    <PropertyValue Property="Label" String="Evidence Breakdown"/>
+                    <PropertyValue Property="Target" AnnotationPath="_EvidenceItems/@com.sap.vocabularies.UI.v1.LineItem"/>
+                  </Record>
+                  <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
+                    <PropertyValue Property="ID" String="AssessmentSummary"/>
+                    <PropertyValue Property="Label" String="Summary"/>
+                    <PropertyValue Property="Target" AnnotationPath="@com.sap.vocabularies.UI.v1.FieldGroup#AgentAssessment"/>
+                  </Record>
+                </Collection>
+              </PropertyValue>
             </Record>
             <Record Type="com.sap.vocabularies.UI.v1.ReferenceFacet">
               <PropertyValue Property="ID" String="HitDetails"/>
@@ -407,14 +422,15 @@
         </Annotation>
 
         <!-- Field Groups -->
+        <!-- The per-field breakdown lives in the evidence table above; these
+             fields are the summary that sits below it. AgentRationale is
+             deliberately excluded — it was a concatenation of all per-item
+             assessments into one wall of text, which is less readable than the
+             table that shows each one in its own row with its own label. -->
         <Annotation Term="com.sap.vocabularies.UI.v1.FieldGroup" Qualifier="AgentAssessment">
           <Record Type="com.sap.vocabularies.UI.v1.FieldGroupType">
             <PropertyValue Property="Data">
               <Collection>
-                <Record Type="com.sap.vocabularies.UI.v1.DataField">
-                  <PropertyValue Property="Value" Path="AgentRationale"/>
-                  <PropertyValue Property="Label" String="Rationale"/>
-                </Record>
                 <Record Type="com.sap.vocabularies.UI.v1.DataField">
                   <PropertyValue Property="Value" Path="WhatWouldChangeMyMind"/>
                   <PropertyValue Property="Label" String="What Would Change This Assessment"/>
@@ -422,6 +438,11 @@
                 <Record Type="com.sap.vocabularies.UI.v1.DataField">
                   <PropertyValue Property="Value" Path="EvidenceSummary"/>
                   <PropertyValue Property="Label" String="Evidence Summary"/>
+                </Record>
+                <Record Type="com.sap.vocabularies.UI.v1.DataField">
+                  <PropertyValue Property="Value" Path="DispositionBand"/>
+                  <PropertyValue Property="Label" String="Disposition"/>
+                  <PropertyValue Property="Criticality" Path="DispositionBandCriticality"/>
                 </Record>
               </Collection>
             </PropertyValue>
