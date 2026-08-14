@@ -614,9 +614,32 @@ class TestMapper:
         r = self._record()
         assert case_id_for(r, r.hits[0]) != case_id_for(r, r.hits[1])
 
-    def test_spl_entry_content_absent_is_explicit(self):
-        """Entry content needs a Z view over /SAPSLL/TSPL*; must not be faked."""
-        assert to_hit_inputs(self._record())[0].spl_entry_name == ""
+    def test_spl_entry_name_extracted_from_matched_name(self):
+        """
+        MatchedName carries the sanctioned party's own name as HTML, not a flag.
+        Verified against a real AGP payload:
+            '<strong>Baring</strong> <strong>Buyeers</strong><br>'
+        Aliases, DOB, nationality and identifiers are still absent and still
+        need a Z view over /SAPSLL/TSPL*.
+        """
+        row = screened_row()
+        row["to_SPLHitsDetailSet"]["results"][0]["MatchedName"] = (
+            "<strong>Baring</strong> <strong>Buyeers</strong><br>"
+        )
+        row["to_SPLHitsDetailSet"]["results"][0]["MatchedAddress"] = (
+            "Av. de Arag&oacute;n,;   Madrid<br>"
+        )
+
+        def handler(request):
+            return httpx.Response(200, json={"d": {"results": [row]}})
+
+        with make_client(handler) as c:
+            hit = to_hit_inputs(next(iter(c.iter_blocked_addresses())))[0]
+
+        assert hit.spl_entry_name == "Baring Buyeers"
+        assert hit.spl_entry_address == "Av. de Aragón, Madrid"
+        # Matched tokens are named, since token rarity is part of the basis (§3.1 #6)
+        assert "Baring" in hit.match_basis and "Buyeers" in hit.match_basis
 
 
 class TestNetworkEvidence:

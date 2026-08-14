@@ -85,11 +85,11 @@ def _to_hit_input(record: ScreenedPartnerAddress, hit: SplHitDetail) -> HitInput
         bp_industry=master.industry if master else "",
         bp_all_identifiers=all_identifiers(record),
         spl_entry_id=hit.spl_entity,
-        # Entry content (name, aliases, DOB, nationality, identifiers, remarks)
-        # is NOT in this service — it lives in /SAPSLL/TSPL* and needs a Z CDS
-        # view. Until then the extractor sees only the entry number, so the
-        # ledger will be thin and the band engine will route to Review.
-        spl_entry_name="",
+        # The entry's name and address DO come through, carried as HTML inside
+        # MatchedName / MatchedAddress. Aliases, DOB, nationality, identifiers
+        # and remarks still need a Z CDS view over /SAPSLL/TSPL*.
+        spl_entry_name=hit.spl_entry_name,
+        spl_entry_address=hit.spl_entry_address,
         spl_list_type=hit.spl_list_type,
         spl_programme=hit.spl_group_desc or hit.spl_group,
         spl_entity_type="",

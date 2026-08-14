@@ -15,6 +15,7 @@ Entity model:
       to_RefBusinessPartnerExt             -> I_BusinessPartner (full master)
 """
 
+import html
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Optional
@@ -60,14 +61,47 @@ class _SapModel(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
 
+def strip_highlight(value: str) -> str:
+    """
+    Plain text from a GTS match field.
+
+    GTS returns matched SPL text as HTML with <strong> around the tokens that
+    matched and <br> between lines, e.g.
+        '<strong>Baring</strong> <strong>Buyeers</strong><br>'
+    """
+    if not value:
+        return ""
+    text = re.sub(r"<br\s*/?>", " ", value, flags=re.I)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html.unescape(text).replace(";", " ")
+    # GTS pads multi-line fields, so collapse runs of whitespace
+    return re.sub(r"\s+", " ", text).strip(" ,")
+
+
+def highlighted_tokens(value: str) -> list[str]:
+    """
+    The tokens GTS marked as matching, i.e. the contents of each <strong>.
+
+    This is the match basis at token level (§3.1 #6) — knowing that only a
+    common surname matched is very different from a full distinctive string.
+    """
+    if not value:
+        return []
+    return [html.unescape(t).strip() for t in re.findall(r"<strong>(.*?)</strong>", value, re.I) if t.strip()]
+
+
 class SplHitDetail(_SapModel):
     """
     One BP-address ↔ SPL-entry match. Entity set: SPLHitsDetailSet.
 
-    Note there is no similarity percentage here — the service exposes only
-    *what* matched (name / address / ID), not how closely. Per §3.1 #6 that
-    match basis is the more informative signal anyway; the numeric score
-    stays in /SAPSLL/SPLATM and is not read for MVP.
+    MatchedName / MatchedAddress are NOT booleans — they carry the sanctioned
+    party's own name and address as HTML, with <strong> around the matched
+    tokens. That is the only SPL entry *content* available over OData, so it is
+    parsed rather than merely tested for emptiness.
+
+    Still absent: aliases, DOB, nationality, identifiers and remarks (§4.1),
+    which need a Z CDS view over /SAPSLL/TSPL*. And no similarity percentage —
+    that stays in /SAPSLL/SPLATM.
     """
 
     address_id: str = Field(alias="AddressID")
@@ -82,7 +116,8 @@ class SplHitDetail(_SapModel):
     # /SAPSLL/TSPL* family for entry content.
     spl_entity: str = Field(alias="SPLEntity")
 
-    # Match basis flags, not scores.
+    # The SPL entry's own name / address, HTML-highlighted. Raw form retained
+    # so the highlight markers stay available.
     matched_name: str = Field(alias="MatchedName", default="")
     matched_address: str = Field(alias="MatchedAddress", default="")
     matched_id: str = Field(alias="MatchedId", default="")
@@ -93,13 +128,38 @@ class SplHitDetail(_SapModel):
     spl_group_desc: str = Field(alias="SPLGroupDesc", default="")
 
     @property
+    def spl_entry_name(self) -> str:
+        """The sanctioned party's name, plain text."""
+        return strip_highlight(self.matched_name)
+
+    @property
+    def spl_entry_address(self) -> str:
+        """The sanctioned party's address, plain text."""
+        return strip_highlight(self.matched_address)
+
+    @property
+    def matched_name_tokens(self) -> list[str]:
+        """Which name tokens GTS considered matching (§3.1 #6)."""
+        return highlighted_tokens(self.matched_name)
+
+    @property
+    def matched_address_tokens(self) -> list[str]:
+        return highlighted_tokens(self.matched_address)
+
+    @property
     def match_basis(self) -> str:
-        """Human-readable match basis for the UI's MatchBasis column."""
+        """
+        Match basis for the UI's MatchBasis column, including which tokens
+        matched — "matched on name" says far less than naming the tokens, and
+        §3.1 #6 makes token rarity part of the assessment.
+        """
         parts = []
         if self.matched_name:
-            parts.append("name")
+            tokens = self.matched_name_tokens
+            parts.append(f"name ({', '.join(tokens)})" if tokens else "name")
         if self.matched_address:
-            parts.append("address")
+            tokens = self.matched_address_tokens
+            parts.append(f"address ({', '.join(tokens)})" if tokens else "address")
         if self.matched_id:
             parts.append("identifier")
         if not parts:

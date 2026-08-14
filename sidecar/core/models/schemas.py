@@ -99,6 +99,8 @@ class HitInput(BaseModel):
     bp_all_identifiers: list[str] = Field(default_factory=list)
     spl_entry_id: str
     spl_entry_name: str
+    # The entry's address, when GTS reports it (it comes through MatchedAddress).
+    spl_entry_address: str = ""
     spl_list_type: str
     spl_programme: str
     spl_entity_type: str = ""
