@@ -231,7 +231,16 @@ def main() -> int:
     sys.path.insert(0, str(Path(__file__).parent))
 
     user = args.user or input("SAP user: ").strip()
-    password = getpass.getpass(f"Password for {user} on AGP/{SAP_CLIENT}: ")
+
+    # getpass() on Windows reads the console via msvcrt and ignores a piped
+    # stdin, so it hangs forever when run non-interactively. Detect that and
+    # read the line instead. Either way the password stays out of argv.
+    if sys.stdin.isatty():
+        password = getpass.getpass(f"Password for {user} on AGP/{SAP_CLIENT}: ")
+    else:
+        password = sys.stdin.readline().rstrip("\r\n")
+        print(f"(password read from stdin for {user})")
+
     if not password:
         print("No password given, aborting.")
         return 1

@@ -208,6 +208,81 @@ Also: the transaction writes to `BALHDR`/`BALDAT`, so activity is visible in `SL
 
 ---
 
+## 6a. Live data survey — 14 Aug 2026
+
+Run against AGP 300 with a dialog user. All 18 services reachable.
+
+**25,066 screened addresses, 432 blocked.** But the blocked population is almost
+entirely the wrong *kind*:
+
+| Legal regulation | Screened | Blocked | SPL screening? |
+|---|---|---|---|
+| `SPLSY` — SPL Screening (Sayari) | 30 | **0** | yes |
+| `SPLUS` — SPL Screening (US) | 4,166 | **1** | yes |
+| `ZHORG` | 4,161 | **417** | no |
+| `ZPLCN` / `ZPLEM` / `ZPLKW` / `ZHIND` | ~4,175 ea. | 14 total | no |
+
+Only `SPLSY` and `SPLUS` are labelled "Sanctioned Party List Screening" in
+`I_GTS_LegalRegulationText`. Everything else in the catalogue is customs
+(`Zollabwicklung`), transit (`NCTS`), export control (`EAR`, `ITAR`, `AWV`),
+embargo (`EMBUN`), excise (`EMCS`) or preference agreements.
+
+**Consequence: 431 of 432 blocked records carry no `SPLHitsDetail` at all**, and
+correctly so — a licence or embargo block has no sanctioned party to compare
+against. There is no identity question, so nothing for this agent to adjudicate.
+
+### The one adjudicatable record
+
+```
+BP 229  'Basam Hasan'  [US / Tal-Kurdi]   reg=SPLUS
+  status='Checked/Blocked by System'  system_decision='2'  processing_status='0'
+  HIT entry='GL4493524'  list='ACL'  provider='DESCARTES'  basis='Matched on name'
+  HIT entry='GL4906807'  list='ACL'  provider='DESCARTES'  basis='Matched on name'
+```
+
+The read path handled it correctly end to end: two hits parsed, BP master
+resolved, mapped to two `HitInput`s. **The pipe works.** There is simply almost
+nothing to run through it.
+
+### Evidence actually present (sample of 60 blocked records)
+
+| | |
+|---|---|
+| ≥1 hit | 2/60 (and both on non-SPL regs in that sample) |
+| identifications | **0/60** |
+| associated blocked objects | **0/60** |
+| associated banks | **0/60** |
+| indirect-block flag | 0/60 |
+| BP master fetched | 60/60 |
+
+BP master resolves but is empty of discriminators: **DOB 0/60, nationality 0/60,
+birthplace 0/60, name at birth 0/60, foundation date 0/60, industry 0/60**. Only
+`BusinessPartnerCategory` is set — and it reads `2` (Organization) for all 60,
+including records plainly named after people (`'Basam Hasan'`). So entity type is
+**not** a reliable discriminator on this data.
+
+The network evidence I'd counted on (§3.1 #8) is therefore unavailable in AGP:
+the `SPLScrngBPIdnIsHidden` / `SPLScrngBPBankIsHidden` / `SPLScrngBkAssocdBPIsHidden`
+flags all come back `true`, which is GTS telling the UI those sections are empty.
+
+### What follows
+
+AGP can prove **the pipe**, not **the adjudication**. Options, in order of value:
+
+1. **Seed test data.** Create a handful of BPs that will match SPL entries — one
+   natural person with DOB and nationality, one legal entity with a registration
+   number — and re-run screening. This is GTS *functional* work, not developer
+   work, so it needs no client 200.
+2. **Lower the SPLUS similarity threshold** so more of the existing 4,166 screened
+   partners produce hits. Config authority required.
+3. **Do quality validation offline** — §11.2 Phase 1, backtesting against real
+   historical hits from the client system rather than AGP. This is where the brief
+   puts it anyway, and it does not depend on AGP at all.
+
+Recommended: 1 for a demo, 3 for credibility. AGP's value is integration proof.
+
+---
+
 ## 7. Data reality in AGP 300
 
 - **BP data is dummy test data.** So `BirthDate`, `BusPartNationality`,

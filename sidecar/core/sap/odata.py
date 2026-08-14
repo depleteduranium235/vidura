@@ -228,6 +228,52 @@ class GtsODataClient:
         self._bp_cache[business_partner] = master
         return master
 
+    def fetch_business_partners(self, ids: list[str]) -> dict[str, BusinessPartnerMaster]:
+        """
+        Batch-fetch BP master for many partners.
+
+        At AGP's volume (hundreds of blocked addresses) one keyed GET per BP is
+        a couple of minutes of pure round-trip latency. This collapses it into a
+        handful of filtered reads instead.
+
+        Populates the same cache fetch_business_partner() uses, so mixing the
+        two is safe. Anything the server omits is cached as None so a missing BP
+        isn't retried on every sweep.
+        """
+        wanted = [i for i in dict.fromkeys(ids) if i and i not in self._bp_cache]
+        if not wanted:
+            return {i: m for i in ids if (m := self._bp_cache.get(i)) is not None}
+
+        # Keep each $filter well under typical gateway URL limits.
+        CHUNK = 40
+        for start in range(0, len(wanted), CHUNK):
+            chunk = wanted[start:start + CHUNK]
+            clause = " or ".join(f"BusinessPartner eq '{bp}'" for bp in chunk)
+            try:
+                payload = self._get(
+                    f"{SERVICE_PATH}/{BP_ENTITY_SET}",
+                    {"$filter": clause, "$select": ",".join(BP_MASTER_SELECT),
+                     "$top": str(len(chunk))},
+                )
+            except ODataError as exc:
+                log.warning("Batch BP fetch failed for %d partner(s): %s", len(chunk), exc)
+                # Fall back to individual reads so one bad ID can't blind the whole chunk
+                for bp in chunk:
+                    self.fetch_business_partner(bp)
+                continue
+
+            returned = set()
+            for row in _unwrap(payload.get("d")):
+                master = BusinessPartnerMaster.model_validate(row)
+                self._bp_cache[master.business_partner] = master
+                returned.add(master.business_partner)
+
+            for bp in chunk:
+                if bp not in returned:
+                    self._bp_cache[bp] = None
+
+        return {i: m for i in ids if (m := self._bp_cache.get(i)) is not None}
+
     def iter_blocked_addresses(
         self,
         since: Optional[datetime] = None,
@@ -269,15 +315,44 @@ class GtsODataClient:
             if not rows:
                 return
 
-            for row in rows:
-                record = self._parse(row)
-                if enrich_bp and record.business_partner:
-                    record.master = self.fetch_business_partner(record.business_partner)
-                yield record
+            records = [self._parse(row) for row in rows]
+
+            if enrich_bp:
+                # Batch per page: one page of 100 costs ~3 calls, not 100.
+                self.fetch_business_partners([r.business_partner for r in records])
+                for record in records:
+                    if record.business_partner:
+                        record.master = self._bp_cache.get(record.business_partner)
+
+            yield from records
 
             if len(rows) < page_size:
                 return
             skip += len(rows)
+
+    def count(self, entity_set: str, filt: Optional[str] = None) -> int:
+        """
+        Row count for any entity set, without pulling bodies.
+
+        Underpins §8's coverage reconciliation — hits in must equal decisions out.
+        Note child-only entities (SPLHitsDetailSet) return 0 here: they are only
+        addressable through a parent's $expand, so a zero is not evidence of
+        absence.
+        """
+        params = {"sap-client": self.sap_client}
+        if filt:
+            params["$filter"] = filt
+        resp = self._client.get(
+            f"{self.base_url}{SERVICE_PATH}/{entity_set}/$count",
+            params=params,
+            headers={"Accept": "text/plain"},
+        )
+        if resp.status_code != 200:
+            raise ODataError(f"$count on {entity_set} failed: {resp.status_code}")
+        body = resp.text.strip()
+        if not body.isdigit():
+            raise ODataError(f"$count on {entity_set} returned non-numeric: {body[:100]!r}")
+        return int(body)
 
     def count_blocked(self, since: Optional[datetime] = None) -> int:
         """
