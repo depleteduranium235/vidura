@@ -9,3 +9,24 @@ __pycache__/
 .env
 .env.local
 sidecar/agp_exploration/
+
+# Runtime state (regenerable, contains watermarks and processed UUIDs)
+sidecar/orchestrator_state.json
+sidecar/adjudication_results.jsonl
+
+# Backtest output (regenerable from records.json)
+sidecar/backtest_out/
+
+# Saved AGP records (contains live system data, not demo data)
+sidecar/records.json
+
+# gh-pages worktree (separate branch, not part of main)
+.gh-pages-build/
+
+# Demo verification screenshots (regenerable)
+demo/shots/
+
+# Built demo artefacts (regenerable from source)
+demo/fiori-app-walkthrough.html
+demo/walkthrough.html
+demo/spl-adjudication-demo.zip

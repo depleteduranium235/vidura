@@ -57,6 +57,7 @@ async def run(hit: HitInput, use_mock: bool = False) -> AdjudicationResult:
     else:
         ledger, elapsed_ms = await extract_evidence(
             hit,
+            spl_address=hit.spl_entry_address,
             spl_dob="1958-03-14",
             spl_nationality="Russian",
         )

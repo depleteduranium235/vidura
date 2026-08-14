@@ -116,6 +116,96 @@ async def extract_evidence(
     return EvidenceLedger(items=items), elapsed_ms
 
 
+async def extract_evidence_async(
+    hit: HitInput,
+    client: Optional[Anthropic] = None,
+    spl_remarks: str = "",
+    spl_address: str = "",
+    spl_dob: str = "",
+    spl_nationality: str = "",
+    spl_aliases: str = "",
+    spl_identifiers: str = "",
+    bp_address: str = "",
+    doc_ship_to: str = "",
+    doc_goods: str = "",
+    doc_value: str = "",
+) -> tuple[EvidenceLedger, int]:
+    """
+    Truly async variant for the orchestrator's bounded-concurrency path.
+
+    Uses AsyncAnthropic so multiple calls actually overlap at the I/O level
+    rather than holding a thread each. Same prompt, same parsing, same output.
+    """
+    from anthropic import AsyncAnthropic
+
+    ssl_verify: bool | str = True
+    if os.environ.get("VIDURA_SSL_VERIFY", "0") == "0":
+        ssl_verify = False
+    elif CORP_CERT_BUNDLE.exists():
+        ssl_verify = str(CORP_CERT_BUNDLE)
+
+    http_client = httpx.AsyncClient(verify=ssl_verify)
+    async_client = AsyncAnthropic(
+        base_url=ANTHROPIC_BASE_URL,
+        http_client=http_client,
+    )
+
+    user_prompt = build_user_prompt(
+        bp_name=hit.bp_name,
+        bp_country=hit.bp_country,
+        bp_entity_type=hit.bp_entity_type,
+        bp_registration_no=hit.bp_registration_no,
+        bp_city="",
+        spl_entry_name=hit.spl_entry_name,
+        spl_entity_type=hit.spl_entity_type,
+        spl_programme=hit.spl_programme,
+        spl_list_type=hit.spl_list_type,
+        match_percentage=hit.match_percentage,
+        match_basis=hit.match_basis,
+        spl_remarks=spl_remarks,
+        spl_address=spl_address,
+        spl_dob=spl_dob,
+        spl_nationality=spl_nationality,
+        spl_aliases=spl_aliases,
+        spl_identifiers=spl_identifiers,
+        bp_address=bp_address,
+        doc_ship_to=doc_ship_to,
+        doc_goods=doc_goods,
+        doc_value=doc_value,
+    )
+
+    start = time.perf_counter_ns()
+
+    response = await async_client.messages.create(
+        model=MODEL_ID,
+        max_tokens=4096,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+
+    elapsed_ms = (time.perf_counter_ns() - start) // 1_000_000
+
+    raw_text = response.content[0].text.strip()
+    if raw_text.startswith("```"):
+        raw_text = raw_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+
+    items_data = json.loads(raw_text)
+
+    items = []
+    for item_data in items_data:
+        items.append(EvidenceItem(
+            category=EvidenceCategory(item_data["category"]),
+            data_element=item_data["data_element"],
+            bp_value=item_data.get("bp_value", ""),
+            spl_value=item_data.get("spl_value", ""),
+            assessment=item_data["assessment"],
+            data_available=item_data.get("data_available", True),
+        ))
+
+    await http_client.aclose()
+    return EvidenceLedger(items=items), elapsed_ms
+
+
 def extract_evidence_mock(hit: HitInput) -> EvidenceLedger:
     """
     Mock implementation for testing the pipeline without LLM calls.

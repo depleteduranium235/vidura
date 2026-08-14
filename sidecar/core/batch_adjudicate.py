@@ -176,6 +176,8 @@ async def run_case(case_data: dict) -> dict:
     hit = HitInput(**case_data)
 
     print(f"  Processing {hit.case_id} ({hit.bp_name})...", flush=True)
+    if hit.spl_entry_address and "spl_address" not in extra:
+        extra["spl_address"] = hit.spl_entry_address
     ledger, elapsed_ms = await extract_evidence(hit, **extra)
 
     band = determine_band(

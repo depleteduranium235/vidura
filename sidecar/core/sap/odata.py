@@ -51,6 +51,12 @@ EXPANDS: dict[str, tuple[type, str]] = {
 DEFAULT_PAGE_SIZE = 100
 RETRY_STATUS = {429, 500, 502, 503, 504}
 
+# The two legal regulations that are actually Sanctioned Party List screening.
+# Everything else in AGP's catalogue is customs, transit, export control,
+# embargo, excise or preference — a block there has no sanctioned party to
+# compare against, so there is no identity question to adjudicate.
+SPL_LEGAL_REGULATIONS: tuple[str, ...] = ("SPLUS", "SPLSY")
+
 
 class ODataError(RuntimeError):
     """Non-retryable failure from the SAP Gateway."""
@@ -283,12 +289,19 @@ class GtsODataClient:
         page_size: int = DEFAULT_PAGE_SIZE,
         expand: bool = True,
         enrich_bp: bool = True,
+        refetch_empty_hits: bool = False,
     ) -> Iterator[ScreenedPartnerAddress]:
         """
         Yield blocked screening results, newest activity first.
 
         `since` filters on SPLCheckDateTime — the watermark that makes replay
         safe after downtime (§5.6 #5). Pass None for a full sweep.
+
+        `refetch_empty_hits`: GTS's collection $expand does not always populate
+        to_SPLHitsDetailSet; a keyed single-entity read with the same $expand
+        reliably does. When True, any record that comes back with empty hits on
+        an SPL regulation is re-read by key. Costs one extra round-trip per such
+        record but recovers hits that would otherwise be invisible.
         """
         filters = ["SPLScreenedAddressIsBlocked eq true"]
         if since is not None:
@@ -296,8 +309,93 @@ class GtsODataClient:
         if legal_regulation:
             filters.append(f"LegalRegulation eq '{quote(legal_regulation)}'")
         if unprocessed_only:
-            filters.append("SPLScrngBlockProcessingStatus eq ''")
+            # '0' means "not yet processed by a human" — same semantics as empty.
+            # Both must be included because GTS uses either depending on how the
+            # block was created (system decision vs manual block).
+            filters.append(
+                "(SPLScrngBlockProcessingStatus eq '' or "
+                "SPLScrngBlockProcessingStatus eq '0')"
+            )
 
+        yield from self._iter_addresses(
+            filters, page_size=page_size, expand=expand, enrich_bp=enrich_bp,
+            refetch_empty_hits=refetch_empty_hits,
+        )
+
+    def iter_decided_addresses(
+        self,
+        *,
+        legal_regulations: Optional[tuple[str, ...]] = SPL_LEGAL_REGULATIONS,
+        page_size: int = DEFAULT_PAGE_SIZE,
+        expand: bool = True,
+        enrich_bp: bool = True,
+        refetch_empty_hits: bool = False,
+    ) -> Iterator[ScreenedPartnerAddress]:
+        """
+        Yield screening results a human has already decided — the §11.2 Phase 1
+        backtest population.
+
+        Deliberately does NOT filter on SPLScreenedAddressIsBlocked. Releasing a
+        record clears that flag, so every record a reviewer cleared has already
+        left the blocked-only feed; filtering on it would return only the
+        confirmed-match subset and silently bias the backtest toward the one
+        verdict the agent must never get wrong.
+
+        Filters on SPLScreeningResultUserDecision instead, restricted to the
+        legal regulations that are genuinely SPL screening.
+        """
+        filters = ["SPLScreeningResultUserDecision ne ''"]
+        if legal_regulations:
+            clause = " or ".join(f"LegalRegulation eq '{reg}'" for reg in legal_regulations)
+            filters.append(f"({clause})")
+
+        yield from self._iter_addresses(
+            filters, page_size=page_size, expand=expand, enrich_bp=enrich_bp,
+            refetch_empty_hits=refetch_empty_hits,
+        )
+
+    def fetch_record_by_key(self, record: ScreenedPartnerAddress) -> ScreenedPartnerAddress:
+        """
+        Re-read a single record by its composite key with full $expand.
+
+        GTS reliably populates to_SPLHitsDetailSet on keyed single-entity
+        reads but not always in collection $expand. This is the fallback for
+        records that come back with empty hits in a list request.
+        """
+        key_parts = [
+            f"LegalRegulation='{quote(record.legal_regulation, safe='')}'",
+            f"AddressID='{quote(record.address_id, safe='')}'",
+            f"BusinessPartner='{quote(record.business_partner, safe='')}'",
+            f"LogicalSystemGroup='{quote(record.logical_system_group, safe='')}'",
+            f"GTSBusinessPartnerType='{quote(record.gts_bp_type, safe='')}'",
+            f"GTSBusinessPartnerExternalID='{quote(record.gts_bp_external_id, safe='')}'",
+            f"ForeignTradeOrganization='{quote(record.foreign_trade_org, safe='')}'",
+        ]
+        key_str = ",".join(key_parts)
+        path = f"{SERVICE_PATH}/{ENTITY_SET}({key_str})"
+        payload = self._get(path, {"$expand": ",".join(EXPANDS)})
+        row = payload.get("d", {})
+        if not row or "__deferred" in row:
+            return record
+        result = self._parse(row)
+        result.master = record.master
+        return result
+
+    def _iter_addresses(
+        self,
+        filters: list[str],
+        *,
+        page_size: int,
+        expand: bool,
+        enrich_bp: bool,
+        refetch_empty_hits: bool = False,
+    ) -> Iterator[ScreenedPartnerAddress]:
+        """
+        Page through the screening root, parse children, enrich BP master.
+
+        Ordered by SPLCheckDateTime because $skip paging without a stable sort
+        can duplicate or drop rows between pages.
+        """
         params: dict[str, str] = {
             "$filter": " and ".join(filters),
             "$orderby": "SPLCheckDateTime asc",
@@ -318,11 +416,20 @@ class GtsODataClient:
             records = [self._parse(row) for row in rows]
 
             if enrich_bp:
-                # Batch per page: one page of 100 costs ~3 calls, not 100.
                 self.fetch_business_partners([r.business_partner for r in records])
                 for record in records:
                     if record.business_partner:
                         record.master = self._bp_cache.get(record.business_partner)
+
+            if refetch_empty_hits:
+                for i, record in enumerate(records):
+                    if (not record.hits
+                            and record.legal_regulation in SPL_LEGAL_REGULATIONS):
+                        try:
+                            records[i] = self.fetch_record_by_key(record)
+                        except ODataError as exc:
+                            log.debug("Keyed re-read failed for %s: %s",
+                                      record.business_partner, exc)
 
             yield from records
 
