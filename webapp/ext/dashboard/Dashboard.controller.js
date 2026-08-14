@@ -225,16 +225,33 @@ sap.ui.define([
     },
 
     _navToList: function (oFilters) {
-      var oRouter = this.getOwnerComponent().getRouter();
+      // In an FPM custom page, the router lives on the shell or the root component.
+      // Try multiple resolution paths to find a working router.
+      var oRouter = this.getOwnerComponent() && this.getOwnerComponent().getRouter();
+      if (!oRouter) {
+        // Fallback: navigate via hash directly
+        window.hasher = window.hasher || { setHash: function (h) { window.location.hash = h; } };
+      }
+
       if (!oFilters) {
-        oRouter.navTo("AdjudicationCaseList");
+        if (oRouter) {
+          oRouter.navTo("AdjudicationCaseList");
+        } else {
+          window.location.hash = "#/cases";
+        }
         return;
       }
-      // Encode filters into query params that the ListReport can read
+
+      // Build the hash with encoded filters
       var sQuery = Object.keys(oFilters).map(function (k) {
         return k + "=" + encodeURIComponent(oFilters[k]);
       }).join("&");
-      oRouter.navTo("AdjudicationCaseList", { "?query": { filters: sQuery } });
+
+      if (oRouter) {
+        oRouter.navTo("AdjudicationCaseList", { "?query": { filters: sQuery } });
+      } else {
+        window.location.hash = "#/cases?filters=" + encodeURIComponent(sQuery);
+      }
     }
 
   });
