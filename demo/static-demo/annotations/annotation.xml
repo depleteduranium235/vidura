@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:Reference Uri="https://sap.github.io/odata-vocabularies/vocabularies/UI.xml">
+    <edmx:Include Namespace="com.sap.vocabularies.UI.v1" Alias="UI"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="https://oasis-tcs.github.io/odata-vocabularies/vocabularies/Org.OData.Capabilities.V1.xml">
+    <edmx:Include Namespace="Org.OData.Capabilities.V1" Alias="Capabilities"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="https://sap.github.io/odata-vocabularies/vocabularies/Common.xml">
+    <edmx:Include Namespace="com.sap.vocabularies.Common.v1" Alias="Common"/>
+  </edmx:Reference>
+  <edmx:DataServices>
+    <Schema Namespace="local" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+
+      <Annotations Target="zpwc.gts.spl_adjudication.AdjudicationCaseType">
+
+        <Annotation Term="UI.HeaderInfo">
+          <Record Type="UI.HeaderInfoType">
+            <PropertyValue Property="TypeName" String="Adjudication Case"/>
+            <PropertyValue Property="TypeNamePlural" String="Adjudication Cases"/>
+            <PropertyValue Property="Title">
+              <Record Type="UI.DataField">
+                <PropertyValue Property="Value" Path="CaseID"/>
+              </Record>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+        <Annotation Term="UI.SelectionFields">
+          <Collection>
+            <PropertyPath>DispositionBand</PropertyPath>
+            <PropertyPath>Status</PropertyPath>
+            <PropertyPath>Priority</PropertyPath>
+          </Collection>
+        </Annotation>
+
+        <Annotation Term="UI.LineItem">
+          <Collection>
+            <Record Type="UI.DataField">
+              <PropertyValue Property="Value" Path="CaseID"/>
+              <PropertyValue Property="Label" String="Case"/>
+            </Record>
+            <Record Type="UI.DataField">
+              <PropertyValue Property="Value" Path="BusinessPartnerName"/>
+              <PropertyValue Property="Label" String="Business Partner"/>
+            </Record>
+            <Record Type="UI.DataField">
+              <PropertyValue Property="Value" Path="SPLEntryName"/>
+              <PropertyValue Property="Label" String="SPL Entry"/>
+            </Record>
+            <Record Type="UI.DataField">
+              <PropertyValue Property="Value" Path="DispositionBand"/>
+              <PropertyValue Property="Label" String="Disposition"/>
+              <PropertyValue Property="Criticality" Path="DispositionBandCriticality"/>
+            </Record>
+            <Record Type="UI.DataField">
+              <PropertyValue Property="Value" Path="Status"/>
+              <PropertyValue Property="Label" String="Status"/>
+              <PropertyValue Property="Criticality" Path="StatusCriticality"/>
+            </Record>
+            <Record Type="UI.DataField">
+              <PropertyValue Property="Value" Path="Priority"/>
+              <PropertyValue Property="Label" String="Priority"/>
+              <PropertyValue Property="Criticality" Path="PriorityCriticality"/>
+            </Record>
+            <Record Type="UI.DataField">
+              <PropertyValue Property="Value" Path="MatchBasis"/>
+              <PropertyValue Property="Label" String="Match Basis"/>
+            </Record>
+            <Record Type="UI.DataField">
+              <PropertyValue Property="Value" Path="AgedDays"/>
+              <PropertyValue Property="Label" String="Age (days)"/>
+            </Record>
+          </Collection>
+        </Annotation>
+
+        <Annotation Term="UI.Facets">
+          <Collection>
+            <Record Type="UI.ReferenceFacet">
+              <PropertyValue Property="ID" String="AgentAssessment"/>
+              <PropertyValue Property="Label" String="Agent Assessment"/>
+              <PropertyValue Property="Target" AnnotationPath="@UI.FieldGroup#AgentAssessment"/>
+            </Record>
+          </Collection>
+        </Annotation>
+
+        <Annotation Term="UI.FieldGroup" Qualifier="AgentAssessment">
+          <Record Type="UI.FieldGroupType">
+            <PropertyValue Property="Data">
+              <Collection>
+                <Record Type="UI.DataField">
+                  <PropertyValue Property="Value" Path="AgentRationale"/>
+                  <PropertyValue Property="Label" String="Rationale"/>
+                </Record>
+                <Record Type="UI.DataField">
+                  <PropertyValue Property="Value" Path="WhatWouldChangeMyMind"/>
+                  <PropertyValue Property="Label" String="What Would Change This Assessment"/>
+                </Record>
+              </Collection>
+            </PropertyValue>
+          </Record>
+        </Annotation>
+
+      </Annotations>
+
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>

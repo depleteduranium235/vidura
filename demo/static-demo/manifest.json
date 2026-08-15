@@ -17,7 +17,7 @@
     },
     "dataSources": {
       "mainService": {
-        "uri": "/sap/opu/odata4/sap/zspl_adjudication/srvd_a2x/zpwc/gts/spl_adjudication/0001/",
+        "uri": "odata/",
         "type": "OData",
         "settings": {
           "annotations": [],
@@ -58,7 +58,7 @@
     }
   },
   "sap.ui5": {
-    "flexEnabled": true,
+    "flexEnabled": false,
     "dependencies": {
       "minUI5Version": "1.120.0",
       "libs": {
@@ -77,7 +77,9 @@
         "type": "sap.ui.model.resource.ResourceModel",
         "settings": {
           "bundleName": "zpwc.gts.spladjudication.i18n.i18n",
-          "supportedLocales": [""],
+          "supportedLocales": [
+            ""
+          ],
           "fallbackLocale": ""
         }
       },
@@ -95,8 +97,8 @@
       "routes": [
         {
           "pattern": ":?query:",
-          "name": "BPCaseList",
-          "target": "BPCaseList"
+          "name": "AdjudicationCaseList",
+          "target": "AdjudicationCaseList"
         },
         {
           "pattern": "AdjudicationCase({key}):?query:",
@@ -104,66 +106,62 @@
           "target": "AdjudicationCaseObjectPage"
         },
         {
-          "pattern": "transactions:?query:",
-          "name": "DocCaseList",
-          "target": "DocCaseList"
-        },
-        {
-          "pattern": "transactions/AdjudicationCase({key}):?query:",
-          "name": "DocCaseObjectPage",
-          "target": "AdjudicationCaseObjectPage"
+          "pattern": "dashboard:?query:",
+          "name": "Dashboard",
+          "target": "Dashboard"
         }
       ],
       "targets": {
-        "BPCaseList": {
+        "Dashboard": {
           "type": "Component",
-          "id": "BPCaseList",
+          "id": "Dashboard",
+          "name": "sap.fe.core.fpm",
+          "options": {
+            "settings": {
+              "viewName": "zpwc.gts.spladjudication.ext.dashboard.Dashboard",
+              "entitySet": "AdjudicationCase"
+            }
+          }
+        },
+        "AdjudicationCaseList": {
+          "type": "Component",
+          "id": "AdjudicationCaseList",
           "name": "sap.fe.templates.ListReport",
           "options": {
             "settings": {
               "entitySet": "AdjudicationCase",
               "variantManagement": "Page",
               "initialLoad": "Enabled",
-              "views": {
-                "paths": [
-                  {"key": "allBP", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionPresentationVariant#BP"},
-                  {"key": "escalatedBP", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#Escalated"},
-                  {"key": "readyToClear", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#ReadyToClear"},
-                  {"key": "aged", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#Aged"}
-                ]
-              },
               "navigation": {
                 "AdjudicationCase": {
                   "detail": {
                     "route": "AdjudicationCaseObjectPage"
                   }
                 }
-              }
-            }
-          }
-        },
-        "DocCaseList": {
-          "type": "Component",
-          "id": "DocCaseList",
-          "name": "sap.fe.templates.ListReport",
-          "options": {
-            "settings": {
-              "entitySet": "AdjudicationCase",
-              "variantManagement": "Page",
-              "initialLoad": "Enabled",
+              },
               "views": {
                 "paths": [
-                  {"key": "allDoc", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionPresentationVariant#Doc"},
-                  {"key": "escalatedDoc", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#Escalated"},
-                  {"key": "highValue", "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#HighValue"}
-                ]
-              },
-              "navigation": {
-                "AdjudicationCase": {
-                  "detail": {
-                    "route": "DocCaseObjectPage"
+                  {
+                    "key": "all",
+                    "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant"
+                  },
+                  {
+                    "key": "escalated",
+                    "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#Escalated"
+                  },
+                  {
+                    "key": "readyToClear",
+                    "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#ReadyToClear"
+                  },
+                  {
+                    "key": "highValue",
+                    "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#HighValue"
+                  },
+                  {
+                    "key": "aged",
+                    "annotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#Aged"
                   }
-                }
+                ]
               }
             }
           }
