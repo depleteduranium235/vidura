@@ -97,18 +97,18 @@
       "routes": [
         {
           "pattern": ":?query:",
-          "name": "Dashboard",
-          "target": "Dashboard"
-        },
-        {
-          "pattern": "cases:?query:",
           "name": "AdjudicationCaseList",
           "target": "AdjudicationCaseList"
         },
         {
-          "pattern": "cases/AdjudicationCase({key}):?query:",
+          "pattern": "AdjudicationCase({key}):?query:",
           "name": "AdjudicationCaseObjectPage",
           "target": "AdjudicationCaseObjectPage"
+        },
+        {
+          "pattern": "dashboard:?query:",
+          "name": "Dashboard",
+          "target": "Dashboard"
         }
       ],
       "targets": {
