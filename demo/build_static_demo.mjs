@@ -43,7 +43,7 @@ rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 
 // ---------------------------------------------------------------- app files
-for (const entry of ["Component.js", "i18n", "localService", "annotations"]) {
+for (const entry of ["Component.js", "i18n", "localService", "annotations", "ext"]) {
   const from = join(WEBAPP, entry);
   if (existsSync(from)) cpSync(from, join(OUT, entry), { recursive: true });
 }
