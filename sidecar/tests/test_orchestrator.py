@@ -291,7 +291,7 @@ class TestOrchestratorSweep:
         assert not (tmp_path / "results.jsonl").exists()
 
     def test_wrong_regulation_skipped(self, tmp_path):
-        client = self._make_client([screened_row(LegalRegulation="ZHORG")])
+        client = self._make_client([screened_row(LegalRegulation="EMBUN")])
         state = OrchestratorState(tmp_path / "state.json")
         writer = JsonlWriter(tmp_path / "results.jsonl")
 

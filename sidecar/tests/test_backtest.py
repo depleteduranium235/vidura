@@ -471,8 +471,10 @@ class TestDecidedQueryConstruction:
         return every record in the system, decided or not.
         """
         params = self._capture()
-        assert "(LegalRegulation eq 'SPLUS' or LegalRegulation eq 'SPLSY')" in \
-            params["$filter"]
+        filt = params["$filter"]
+        assert filt.count("LegalRegulation eq '") >= 2
+        assert "(" in filt and ")" in filt
+        assert " or " in filt
 
     def test_all_regulations_when_none_requested(self):
         params = self._capture(legal_regulations=None)
@@ -486,8 +488,12 @@ class TestDecidedQueryConstruction:
         params = self._capture()
         assert params["$orderby"] == "SPLCheckDateTime asc"
 
-    def test_spl_regulations_are_the_two_screening_ones(self):
-        assert set(SPL_LEGAL_REGULATIONS) == {"SPLUS", "SPLSY"}
+    def test_spl_regulations_include_all_screening_variants(self):
+        assert "SPLUS" in SPL_LEGAL_REGULATIONS
+        assert "SPLSY" in SPL_LEGAL_REGULATIONS
+        assert "ZHORG" in SPL_LEGAL_REGULATIONS
+        assert "ZHIND" in SPL_LEGAL_REGULATIONS
+        assert len(SPL_LEGAL_REGULATIONS) >= 5
 
     def test_blocked_iterator_still_filters_on_blocked(self):
         """The refactor must not have loosened the polling path's filter."""

@@ -51,11 +51,22 @@ EXPANDS: dict[str, tuple[type, str]] = {
 DEFAULT_PAGE_SIZE = 100
 RETRY_STATUS = {429, 500, 502, 503, 504}
 
-# The two legal regulations that are actually Sanctioned Party List screening.
-# Everything else in AGP's catalogue is customs, transit, export control,
-# embargo, excise or preference — a block there has no sanctioned party to
-# compare against, so there is no identity question to adjudicate.
-SPL_LEGAL_REGULATIONS: tuple[str, ...] = ("SPLUS", "SPLSY")
+# Legal regulations that are Sanctioned Party List screening.
+# Validated from I_GTS_LegalRegulationText on AGP 300 — every regulation whose
+# description contains "Sanctioned Party List Screening". ZHORG/ZHIND are the
+# demo variants for organisations/individuals used in AGP testing.
+# Everything else in the catalogue is customs, transit, export control, embargo,
+# excise or preference — a block there has no sanctioned party to compare
+# against, so there is no identity question to adjudicate.
+SPL_LEGAL_REGULATIONS: tuple[str, ...] = (
+    "SPLUS",   # Sanctioned Party List Screening
+    "SPLSY",   # Sanctioned Party List Screening - Sayari
+    "ZHORG",   # SPL Screening (Demo HANA Organizations)
+    "ZHIND",   # SPL Screening (Demo HANA Individuals)
+    "ZPLCN",   # Foreign Language SPL Screening (Chinese)
+    "ZSPLH",   # SPL Screening - High Risk
+    "ZSPLL",   # SPL Screening - Low Risk
+)
 
 
 class ODataError(RuntimeError):
