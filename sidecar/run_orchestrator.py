@@ -37,6 +37,7 @@ from core.orchestrator import (
     Orchestrator,
     OrchestratorState,
 )
+from core.orchestrator.writer import ZTableWriter
 from core.sap.odata import GtsODataClient
 
 BASE = "https://agpapp.sap.pwc.com:8001"
@@ -71,6 +72,8 @@ def main() -> int:
                         help="state file path (default: sidecar/orchestrator_state.json)")
     parser.add_argument("--output", default=None,
                         help="JSONL output file (default: sidecar/adjudication_results.jsonl)")
+    parser.add_argument("--write-to-sap", action="store_true",
+                        help="write results to the Z table via OData V4 RAP service (instead of JSONL)")
     parser.add_argument("--error-threshold", type=float, default=0.30,
                         help="kill-switch error rate threshold (default: %(default)s)")
     parser.add_argument("--log-level", default="INFO",
@@ -86,7 +89,12 @@ def main() -> int:
     password = read_password()
 
     state = OrchestratorState(Path(args.state_file) if args.state_file else None)
-    writer = JsonlWriter(Path(args.output) if args.output else None)
+
+    if args.write_to_sap:
+        writer = ZTableWriter(BASE, USER, password, sap_client="300")
+    else:
+        writer = JsonlWriter(Path(args.output) if args.output else None)
+
     kill_switch = KillSwitch(error_threshold=args.error_threshold)
 
     client = GtsODataClient(BASE, USER, password, sap_client="300")

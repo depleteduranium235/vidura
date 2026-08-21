@@ -19,7 +19,7 @@ ANTHROPIC_BASE_URL = os.environ.get(
 )
 MODEL_ID = os.environ.get(
     "VIDURA_MODEL_ID",
-    "bedrock.anthropic.claude-sonnet-4-6",
+    "bedrock.anthropic.claude-haiku-4-5",
 )
 
 # Corporate SSL cert bundle
