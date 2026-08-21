@@ -109,14 +109,21 @@ class Orchestrator:
         max_ts: Optional[datetime] = None
 
         records: list[ScreenedPartnerAddress] = []
-        for record in self._client.iter_blocked_addresses(
-            since=self._state.watermark,
-            unprocessed_only=True,
-            expand=True,
-            enrich_bp=True,
-            refetch_empty_hits=True,
-        ):
-            records.append(record)
+        # Query each SPL regulation separately at the OData level so GTS
+        # filters server-side (avoids reading 400+ non-SPL records).
+        # Only SPLUS/SPLSY need keyed re-reads for empty hits; ZHORG and
+        # others already have hits populated in the collection expand.
+        REGS_NEEDING_REFETCH = ("SPLUS", "SPLSY")
+        for reg in SPL_LEGAL_REGULATIONS:
+            for record in self._client.iter_blocked_addresses(
+                since=self._state.watermark,
+                legal_regulation=reg,
+                unprocessed_only=True,
+                expand=True,
+                enrich_bp=True,
+                refetch_empty_hits=(reg in REGS_NEEDING_REFETCH),
+            ):
+                records.append(record)
 
         self._kill_switch.record_read_success()
         counters.records_read = len(records)
@@ -132,9 +139,7 @@ class Orchestrator:
                 if max_ts is None or record.spl_check_datetime > max_ts:
                     max_ts = record.spl_check_datetime
 
-            if record.legal_regulation not in SPL_LEGAL_REGULATIONS:
-                counters.records_skipped_wrong_regulation += 1
-                continue
+            # No regulation check needed — we pre-filtered at the OData level
 
             record_id = self._state.record_identity(record)
             if self._state.is_processed(record_id):
